@@ -7,11 +7,6 @@
 <style>
 .hint{color:var(--text-muted);font-size:12px;line-height:1.5;margin-top:6px}
 .inline-check{display:inline-flex;align-items:center;gap:8px;margin:0;color:var(--text);font-size:13px;cursor:pointer}
-.settings-grid{display:grid;gap:12px}
-.switch-row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer}
-.switch-row strong{display:block;color:var(--text-heading);font-size:14px;margin-bottom:3px}
-.switch-row small{display:block;color:var(--text-muted);font-size:12px;line-height:1.45;font-weight:500}
-.switch-row input{width:18px;height:18px}
 .usage-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .usage-input{max-width:160px}
 .usage-muted{color:var(--text-muted);font-size:12px;margin-top:4px}
@@ -24,27 +19,6 @@
   <nav class="sidebar"></nav>
   <div class="main">
     <h1 id="pageTitle"></h1>
-
-    <div class="card">
-      <h3 style="font-size:15px;margin-bottom:6px" id="securityTitle"></h3>
-      <div class="hint" style="margin-bottom:16px" id="globalNote"></div>
-      <div class="settings-grid">
-        <label class="switch-row" for="loginCodeEnabled">
-          <span>
-            <strong id="loginCodeToggleLabel"></strong>
-            <small id="loginCodeToggleDesc"></small>
-          </span>
-          <input type="checkbox" id="loginCodeEnabled" onchange="toggleLoginCode()">
-        </label>
-        <label class="switch-row" for="turnstileEnabled">
-          <span>
-            <strong id="turnstileToggleLabel"></strong>
-            <small id="turnstileToggleDesc"></small>
-          </span>
-          <input type="checkbox" id="turnstileEnabled" onchange="toggleTurnstile()">
-        </label>
-      </div>
-    </div>
 
     <div class="card">
       <h3 style="font-size:15px;margin-bottom:16px" id="createTitle"></h3>
@@ -84,12 +58,6 @@ const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer $
 
 renderSidebar('login-codes');
 document.getElementById('pageTitle').textContent = t('login_codes_title');
-document.getElementById('securityTitle').textContent = t('login_codes_security_title');
-document.getElementById('globalNote').textContent = t('login_codes_global_note');
-document.getElementById('loginCodeToggleLabel').textContent = t('login_codes_login_code_toggle');
-document.getElementById('loginCodeToggleDesc').textContent = t('login_codes_login_code_desc');
-document.getElementById('turnstileToggleLabel').textContent = t('login_codes_turnstile_toggle');
-document.getElementById('turnstileToggleDesc').textContent = t('login_codes_turnstile_desc');
 document.getElementById('createTitle').textContent = t('login_codes_create_title');
 document.getElementById('lCode').textContent = t('login_codes_code_label');
 document.getElementById('newCode').placeholder = t('login_codes_code_placeholder');
@@ -118,27 +86,6 @@ async function api(path, opts = {}) {
   }
   return data;
 }
-
-async function loadSecurity() {
-  const data = await api('/security');
-  const security = data.security || {};
-  document.getElementById('loginCodeEnabled').checked = security.login_code_enabled !== false;
-  document.getElementById('turnstileEnabled').checked = security.turnstile_enabled !== false;
-}
-
-async function saveSecurity() {
-  await api('/security', {
-    method: 'PUT',
-    body: JSON.stringify({
-      login_code_enabled: document.getElementById('loginCodeEnabled').checked,
-      turnstile_enabled: document.getElementById('turnstileEnabled').checked,
-    }),
-  });
-  toast(t('login_codes_security_saved'));
-}
-
-function toggleLoginCode() { saveSecurity(); }
-function toggleTurnstile() { saveSecurity(); }
 
 function toggleUnlimited() {
   const unlimited = document.getElementById('unlimited').checked;
@@ -210,7 +157,6 @@ document.getElementById('newCode').addEventListener('keydown', e => { if (e.key 
 document.getElementById('maxUses').addEventListener('keydown', e => { if (e.key === 'Enter') addCode(); });
 function esc(s) { const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 function attr(s) { return esc(s).replace(/"/g, '&quot;'); }
-loadSecurity();
 loadCodes();
 </script>
 </body>

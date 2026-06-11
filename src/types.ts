@@ -79,6 +79,7 @@ export interface LoginCode {
 export interface SecuritySettings {
   turnstile_enabled: boolean;
   login_code_enabled: boolean;
+  turnstile_configured?: boolean;
 }
 
 export interface LogEntry {

@@ -39,6 +39,11 @@
 .links-card .hint{color:var(--text-muted);font-size:12px;line-height:1.5;margin-bottom:16px}
 .links-card .form-group{margin-bottom:14px}
 .links-card .form-group:last-child{margin-bottom:0}
+.branding-actions{align-items:center;gap:16px;flex-wrap:wrap}
+.security-check{display:inline-flex;align-items:center;gap:7px;margin:0;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;user-select:none}
+.security-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+.security-check input:disabled{cursor:not-allowed}
+.security-check.disabled{color:var(--text-muted);cursor:not-allowed;opacity:.55}
 @media(max-width:1040px){.branding-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -69,8 +74,16 @@
           <input type="url" id="bgUrl" placeholder="https://example.com/background.jpg" oninput="updateAllPreviews()">
           <textarea id="bgUrls" rows="4" style="display:none;font-family:monospace;resize:vertical" oninput="updateAllPreviews()"></textarea>
         </div>
-        <div class="btn-group" style="margin-bottom:0">
+        <div class="btn-group branding-actions" style="margin-bottom:0">
           <button class="btn btn-primary" onclick="saveBranding()" id="saveBtn"></button>
+          <label class="security-check" id="loginCodeToggleWrap">
+            <input type="checkbox" id="loginCodeEnabled" onchange="saveSecurity()">
+            <span id="lLoginCodeEnabled"></span>
+          </label>
+          <label class="security-check" id="turnstileToggleWrap">
+            <input type="checkbox" id="turnstileEnabled" onchange="saveSecurity()">
+            <span id="lTurnstileEnabled"></span>
+          </label>
         </div>
       </div>
 
@@ -148,6 +161,8 @@ document.getElementById('lBgHint').textContent = t('branding_bg_hint');
 document.getElementById('lBgRotate').textContent = t('branding_bg_rotate');
 document.getElementById('bgUrls').placeholder = t('branding_bg_rotate_placeholder');
 document.getElementById('saveBtn').textContent = t('branding_save');
+document.getElementById('lLoginCodeEnabled').textContent = t('branding_login_code_toggle');
+document.getElementById('lTurnstileEnabled').textContent = t('branding_turnstile_toggle');
 document.getElementById('linksTitle').textContent = t('branding_links_title');
 document.getElementById('linksHint').textContent = t('branding_links_hint');
 document.getElementById('lExternalLinkName').textContent = t('branding_link_name');
@@ -173,6 +188,40 @@ function apiImage(path) {
     if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
     if (!res.ok) throw new Error('Image fetch failed');
     return res.blob();
+  });
+}
+
+function applySecurityState(security) {
+  security = security || {};
+  var loginCode = document.getElementById('loginCodeEnabled');
+  var turnstile = document.getElementById('turnstileEnabled');
+  var turnstileWrap = document.getElementById('turnstileToggleWrap');
+  var turnstileConfigured = security.turnstile_configured !== false;
+  loginCode.checked = security.login_code_enabled !== false;
+  turnstile.checked = turnstileConfigured && security.turnstile_enabled !== false;
+  turnstile.disabled = !turnstileConfigured;
+  turnstileWrap.classList.toggle('disabled', !turnstileConfigured);
+  turnstileWrap.title = turnstileConfigured ? '' : t('branding_turnstile_unconfigured');
+}
+
+function loadSecurity() {
+  api('/security').then(function(data) {
+    applySecurityState(data && data.security);
+  });
+}
+
+function saveSecurity() {
+  var loginCode = document.getElementById('loginCodeEnabled');
+  var turnstile = document.getElementById('turnstileEnabled');
+  return api('/security', {
+    method: 'PUT',
+    body: JSON.stringify({
+      login_code_enabled: loginCode.checked,
+      turnstile_enabled: !turnstile.disabled && turnstile.checked,
+    }),
+  }).then(function(data) {
+    applySecurityState(data && data.security);
+    toast(t('login_codes_security_saved'));
   });
 }
 
@@ -688,6 +737,7 @@ function saveBranding() {
 function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
 loadBranding();
+loadSecurity();
 </script>
 </body>
 </html>

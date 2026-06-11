@@ -52,7 +52,7 @@ export async function handleAdminApi(request: Request, env: Env, path: string): 
     }
     if (request.method === 'PUT') {
       const body = await request.json() as Partial<SecuritySettings>;
-      const security = normalizeSecuritySettings(body);
+      const security = normalizeSecuritySettings(body, isTurnstileConfigured(env));
       await saveSecuritySettings(env, security);
       return Response.json({ security });
     }
@@ -248,24 +248,33 @@ function publicLoginCode(code: LoginCode): Omit<LoginCode, 'code_hash'> {
 }
 
 export async function getSecuritySettings(env: Env): Promise<SecuritySettings> {
+  const turnstileConfigured = isTurnstileConfigured(env);
   const raw = await env.OIDC_KV.get('config:security');
-  if (!raw) return { ...DEFAULT_SECURITY };
+  if (!raw) return normalizeSecuritySettings(DEFAULT_SECURITY, turnstileConfigured);
 
   try {
-    return normalizeSecuritySettings(JSON.parse(raw));
+    return normalizeSecuritySettings(JSON.parse(raw), turnstileConfigured);
   } catch {
-    return { ...DEFAULT_SECURITY };
+    return normalizeSecuritySettings(DEFAULT_SECURITY, turnstileConfigured);
   }
 }
 
 async function saveSecuritySettings(env: Env, security: SecuritySettings): Promise<void> {
-  await env.OIDC_KV.put('config:security', JSON.stringify(security));
+  await env.OIDC_KV.put('config:security', JSON.stringify({
+    turnstile_enabled: security.turnstile_enabled,
+    login_code_enabled: security.login_code_enabled,
+  }));
 }
 
-function normalizeSecuritySettings(value: Partial<SecuritySettings>): SecuritySettings {
+function isTurnstileConfigured(env: Env): boolean {
+  return Boolean(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY);
+}
+
+function normalizeSecuritySettings(value: Partial<SecuritySettings>, turnstileConfigured: boolean): SecuritySettings {
   return {
-    turnstile_enabled: typeof value.turnstile_enabled === 'boolean' ? value.turnstile_enabled : DEFAULT_SECURITY.turnstile_enabled,
+    turnstile_enabled: turnstileConfigured && (typeof value.turnstile_enabled === 'boolean' ? value.turnstile_enabled : DEFAULT_SECURITY.turnstile_enabled),
     login_code_enabled: typeof value.login_code_enabled === 'boolean' ? value.login_code_enabled : DEFAULT_SECURITY.login_code_enabled,
+    turnstile_configured: turnstileConfigured,
   };
 }
 

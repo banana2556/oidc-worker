@@ -393,6 +393,7 @@ test('authorize post accepts managed login code and consumes limited uses', asyn
 test('authorize login page renders Turnstile widget when configured', async () => {
   const env = createEnv();
   (env as any).TURNSTILE_SITE_KEY = 'site-key';
+  (env as any).TURNSTILE_SECRET_KEY = 'secret-key';
   await env.OIDC_KV.put('config:clients', JSON.stringify([{
     client_id: 'client-id',
     client_secret_hash: 'secret-hash',
@@ -416,6 +417,7 @@ test('authorize login page renders Turnstile widget when configured', async () =
 test('authorize post requires successful Turnstile verification when secret is configured', async () => {
   const env = createEnv();
   const token = await createAdminJwt(env.ADMIN_SECRET);
+  (env as any).TURNSTILE_SITE_KEY = 'site-key';
   (env as any).TURNSTILE_SECRET_KEY = 'secret-key';
   await env.OIDC_KV.put('config:domains', JSON.stringify(['example.com']));
   await handleAdminApi(new Request('https://issuer.example/api/admin/login-codes', {
@@ -494,7 +496,7 @@ test('admin security settings can disable Turnstile and login code globally', as
   const listed = await handleAdminApi(new Request('https://issuer.example/api/admin/security', {
     headers: { Authorization: `Bearer ${token}` },
   }), env as any, '/api/admin/security');
-  const settings = await listed.json() as { security: { turnstile_enabled: boolean; login_code_enabled: boolean } };
+  const settings = await listed.json() as { security: { turnstile_enabled: boolean; login_code_enabled: boolean; turnstile_configured?: boolean } };
   const loginPage = await handleAuthorizeGet(
     new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback'),
     env as any,
@@ -521,6 +523,7 @@ test('admin security settings can disable Turnstile and login code globally', as
     assert.equal(saved.status, 200);
     assert.equal(settings.security.turnstile_enabled, false);
     assert.equal(settings.security.login_code_enabled, false);
+    assert.equal(settings.security.turnstile_configured, true);
     assert.doesNotMatch(html, /class="cf-turnstile"/);
     assert.doesNotMatch(html, /name="login_code"/);
     assert.equal(posted.status, 302);
@@ -528,6 +531,32 @@ test('admin security settings can disable Turnstile and login code globally', as
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('admin security settings report and enforce Turnstile env availability', async () => {
+  const env = createEnv();
+  const token = await createAdminJwt(env.ADMIN_SECRET);
+
+  const saved = await handleAdminApi(new Request('https://issuer.example/api/admin/security', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ turnstile_enabled: true, login_code_enabled: true }),
+  }), env as any, '/api/admin/security');
+  const listed = await handleAdminApi(new Request('https://issuer.example/api/admin/security', {
+    headers: { Authorization: `Bearer ${token}` },
+  }), env as any, '/api/admin/security');
+  const savedData = await saved.json() as { security: { turnstile_enabled: boolean; login_code_enabled: boolean; turnstile_configured?: boolean } };
+  const listedData = await listed.json() as { security: { turnstile_enabled: boolean; login_code_enabled: boolean; turnstile_configured?: boolean } };
+
+  assert.equal(saved.status, 200);
+  assert.equal(savedData.security.login_code_enabled, true);
+  assert.equal(savedData.security.turnstile_enabled, false);
+  assert.equal(savedData.security.turnstile_configured, false);
+  assert.equal(listedData.security.turnstile_enabled, false);
+  assert.equal(listedData.security.turnstile_configured, false);
 });
 
 test('branding UI labels button color as theme color and exposes auto checkbox', () => {
@@ -564,7 +593,20 @@ test('branding UI exposes single external link editor next to organization card'
   assert.doesNotMatch(brandingPage, /externalLinksList/);
 });
 
-test('admin UI exposes login code management page', () => {
+test('branding UI exposes global login security toggles beside save button', () => {
+  const brandingPage = readFileSync('public/admin/branding.html', 'utf8');
+
+  assert.match(brandingPage, /class="btn-group branding-actions"/);
+  assert.match(brandingPage, /id="loginCodeEnabled"/);
+  assert.match(brandingPage, /id="turnstileEnabled"/);
+  assert.match(brandingPage, /loadSecurity/);
+  assert.match(brandingPage, /saveSecurity/);
+  assert.match(brandingPage, /\/security/);
+  assert.match(brandingPage, /turnstile_configured/);
+  assert.match(brandingPage, /turnstile\.disabled/);
+});
+
+test('admin UI exposes login code management page without global security toggles', () => {
   const i18n = readFileSync('public/assets/i18n.js', 'utf8');
   const page = readFileSync('public/admin/login-codes.html', 'utf8');
 
@@ -577,9 +619,11 @@ test('admin UI exposes login code management page', () => {
   assert.match(i18n, /login_codes_auto_hint/);
   assert.match(i18n, /login_codes_copied/);
   assert.match(i18n, /登入驗證碼/);
-  assert.match(page, /\/security/);
-  assert.match(page, /toggleTurnstile/);
-  assert.match(page, /toggleLoginCode/);
+  assert.doesNotMatch(page, /\/security/);
+  assert.doesNotMatch(page, /id="loginCodeEnabled"/);
+  assert.doesNotMatch(page, /id="turnstileEnabled"/);
+  assert.doesNotMatch(page, /toggleTurnstile/);
+  assert.doesNotMatch(page, /toggleLoginCode/);
   assert.match(page, /copyCode/);
   assert.match(page, /class="usage-input"/);
   assert.doesNotMatch(page, /login_codes_required/);
