@@ -186,6 +186,7 @@ test('authorize login page renders external links below submit and sizes logo to
   assert.doesNotMatch(html, />Support<\/span>/);
   assert.match(html, /target="_blank"/);
   assert.match(html, /rel="noopener noreferrer"/);
+  assert.match(html, /\.external-links\{[^}]*margin-top:32px/);
 });
 
 test('authorize login page prefills email from login_hint', async () => {
@@ -604,6 +605,18 @@ test('branding UI exposes global login security toggles beside save button', () 
   assert.match(brandingPage, /\/security/);
   assert.match(brandingPage, /turnstile_configured/);
   assert.match(brandingPage, /turnstile\.disabled/);
+});
+
+test('branding theme previews render login security and external link appearance settings', () => {
+  const brandingPage = readFileSync('public/admin/branding.html', 'utf8');
+
+  assert.match(brandingPage, /loginCodePreviewEnabled/);
+  assert.match(brandingPage, /turnstilePreviewEnabled/);
+  assert.match(brandingPage, /updateAllPreviews\(\)/);
+  assert.match(brandingPage, /Verification Code/);
+  assert.match(brandingPage, /turnstile-preview/);
+  assert.match(brandingPage, /\.external-links\{[^}]*margin-top:18px/);
+  assert.match(brandingPage, /externalLinkForPreview/);
 });
 
 test('admin UI exposes login code management page without global security toggles', () => {

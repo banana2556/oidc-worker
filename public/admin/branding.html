@@ -14,7 +14,7 @@
 .theme-preview-card.fade-out{opacity:0;pointer-events:none}
 .badge-label{position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;z-index:1;display:none}
 .theme-preview-card.selected .badge-label{display:block}
-.theme-preview-card iframe{width:100%;height:280px;border:none;pointer-events:none}
+.theme-preview-card iframe{width:100%;height:340px;border:none;pointer-events:none}
 .theme-name{text-align:center;padding:10px;font-size:13px;font-weight:600;background:var(--surface);border-top:1px solid var(--border)}
 .theme-settings-card{display:none;border:2px solid var(--primary);border-radius:var(--radius);background:var(--surface);padding:24px;opacity:0;transition:opacity .3s ease;overflow-y:auto;grid-column:span 2}
 .theme-settings-card.visible{opacity:1}
@@ -150,6 +150,8 @@ var themeSettings = {
 };
 var themeColorMap = {};
 var externalLink = { name: '', icon_url: '', url: '' };
+var loginCodePreviewEnabled = true;
+var turnstilePreviewEnabled = false;
 
 renderSidebar('branding');
 document.getElementById('pageTitle').textContent = t('branding_title');
@@ -199,9 +201,12 @@ function applySecurityState(security) {
   var turnstileConfigured = security.turnstile_configured !== false;
   loginCode.checked = security.login_code_enabled !== false;
   turnstile.checked = turnstileConfigured && security.turnstile_enabled !== false;
+  loginCodePreviewEnabled = loginCode.checked;
+  turnstilePreviewEnabled = turnstile.checked;
   turnstile.disabled = !turnstileConfigured;
   turnstileWrap.classList.toggle('disabled', !turnstileConfigured);
   turnstileWrap.title = turnstileConfigured ? '' : t('branding_turnstile_unconfigured');
+  updateAllPreviews();
 }
 
 function loadSecurity() {
@@ -213,6 +218,9 @@ function loadSecurity() {
 function saveSecurity() {
   var loginCode = document.getElementById('loginCodeEnabled');
   var turnstile = document.getElementById('turnstileEnabled');
+  loginCodePreviewEnabled = loginCode.checked;
+  turnstilePreviewEnabled = !turnstile.disabled && turnstile.checked;
+  updateAllPreviews();
   return api('/security', {
     method: 'PUT',
     body: JSON.stringify({
@@ -645,6 +653,9 @@ function renderPreview(themeKey) {
     var linkIcon = link.icon_url ? '<img class="external-link-icon" src="' + esc(link.icon_url) + '">' : '<span class="external-link-icon"></span>';
     return '<span class="external-link">' + linkIcon + '<span>' + esc(link.name) + '</span></span>';
   }).join('') + '</div>' : '';
+  var subtitle = loginCodePreviewEnabled ? 'Enter your email and verification code to continue' : 'Enter your email to continue';
+  var loginCodeHtml = loginCodePreviewEnabled ? '<label>Verification Code</label><input type="password" disabled>' : '';
+  var turnstileHtml = turnstilePreviewEnabled ? '<div class="turnstile-preview">Turnstile</div>' : '';
   return '<!DOCTYPE html><html><head><style>' +
     '*{margin:0;padding:0;box-sizing:border-box}' +
     ':root{--theme-color:' + ts.color + ';--theme-color-rgb:' + themeRgb.join(',') + '}' +
@@ -654,10 +665,11 @@ function renderPreview(themeKey) {
     'label{display:block;font-size:10px;font-weight:500;margin-bottom:3px;' + ts.text + ';opacity:0.8}' +
     'input{' + ts.input + ';margin-bottom:10px;font-size:11px;padding:8px 10px}' +
     'button{' + ts.btn + ';font-size:11px;padding:8px;margin-top:4px}' +
-    '.external-links{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}.external-link{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:46px;text-align:center;font-size:8px;line-height:1.2;' + ts.text + '}.external-link-icon{width:24px;height:24px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,0.18);border:1px solid rgba(var(--theme-color-rgb),0.35)}' +
+    '.turnstile-preview{height:28px;margin:0 0 9px;border:1px dashed rgba(var(--theme-color-rgb),0.45);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:0;' + ts.text + ';opacity:0.72}' +
+    '.external-links{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:18px}.external-link{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:46px;text-align:center;font-size:8px;line-height:1.2;' + ts.text + '}.external-link-icon{width:24px;height:24px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,0.18);border:1px solid rgba(var(--theme-color-rgb),0.35)}' +
     '</style></head><body><div class="card"><div class="brand' + (iconUrl ? ' has-logo' : '') + '">' + iconHtml + '<h1>' + esc(title) + '</h1>' +
-    '<p class="sub">Enter your email to continue</p></div><label>Email Address</label>' +
-    '<input type="email" placeholder="you@company.com" disabled><button disabled>Continue</button>' + linksHtml + '</div></body></html>';
+    '<p class="sub">' + subtitle + '</p></div><label>Email Address</label>' +
+    '<input type="email" placeholder="you@company.com" disabled>' + loginCodeHtml + turnstileHtml + '<button disabled>Continue</button>' + linksHtml + '</div></body></html>';
 }
 
 function updateAllPreviews() {

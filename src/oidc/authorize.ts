@@ -335,8 +335,8 @@ input::placeholder{opacity:0.5}
 .turnstile-wrap{margin:4px 0 12px}
 button[type=submit]{${t.btn};margin-top:8px}
 button[type=submit]:hover{opacity:0.9;transform:translateY(-1px)}
-.external-links{display:flex;justify-content:center;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-top:18px}
-.external-link{display:flex;flex-direction:column;align-items:center;gap:7px;max-width:92px;text-align:center;text-decoration:none;font-size:12px;line-height:1.25;${t.text};opacity:0.86;transition:opacity .2s,transform .2s}
+.external-links{display:flex;justify-content:center;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-top:32px}
+.external-link{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:92px;text-align:center;text-decoration:none;font-size:12px;line-height:1.25;${t.text};opacity:0.86;transition:opacity .2s,transform .2s}
 .external-link:hover{opacity:1;transform:translateY(-1px)}
 .external-link-icon{width:44px;height:44px;border-radius:999px;object-fit:cover;background:rgba(255,255,255,0.16);border:1px solid rgba(var(--theme-color-rgb),0.35);box-shadow:0 4px 14px rgba(0,0,0,0.16)}
 .external-link-fallback{display:block}
