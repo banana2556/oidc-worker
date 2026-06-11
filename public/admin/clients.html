@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OIDC Admin - Clients</title>
+<link rel="stylesheet" href="/assets/admin.css">
+<style>
+.copy-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:6px;cursor:pointer;color:var(--text-muted);transition:all .15s;flex-shrink:0}
+.copy-btn:hover{color:var(--primary);border-color:var(--primary);background:rgba(99,102,241,0.1)}
+.copy-btn.copied{color:var(--success);border-color:var(--success)}
+.copiable{display:inline-flex;align-items:center;gap:6px}
+.copiable .copy-inline{background:none;border:none;cursor:pointer;color:var(--text-muted);padding:2px;transition:color .15s;flex-shrink:0}
+.copiable .copy-inline:hover{color:var(--primary)}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar"></nav>
+  <div class="main">
+    <h1 id="pageTitle"></h1>
+    <div class="card">
+      <h3 style="font-size:15px;margin-bottom:16px" id="createTitle"></h3>
+      <div class="form-group">
+        <label for="clientName" id="lName"></label>
+        <input type="text" id="clientName">
+      </div>
+      <div class="form-group">
+        <label for="redirectUris" id="lUris"></label>
+        <textarea id="redirectUris" rows="3" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:14px;width:100%;outline:none;resize:vertical;font-family:monospace"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="createClient()" id="createBtn"></button>
+    </div>
+
+    <div id="newClientInfo" class="card" style="display:none;border-color:var(--success)">
+      <h3 style="font-size:15px;margin-bottom:8px;color:var(--success)" id="successTitle"></h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px" id="successDesc"></p>
+      <label id="lCid"></label>
+      <div class="secret-display" style="display:flex;align-items:center;gap:8px">
+        <span id="newClientId" style="flex:1;word-break:break-all"></span>
+        <button class="copy-btn" onclick="copyText('newClientId')" title="Copy">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>
+      <label id="lCsecret"></label>
+      <div class="secret-display" style="display:flex;align-items:center;gap:8px">
+        <span id="newClientSecret" style="flex:1;word-break:break-all"></span>
+        <button class="copy-btn" onclick="copyText('newClientSecret')" title="Copy">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('newClientInfo').style.display='none'" style="margin-top:8px" id="dismissBtn"></button>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:15px;margin-bottom:16px" id="registeredTitle"></h3>
+      <table>
+        <thead><tr><th id="thName"></th><th id="thId"></th><th id="thUris"></th><th id="thCreated"></th><th style="width:80px" id="thActions"></th></tr></thead>
+        <tbody id="clientList"></tbody>
+      </table>
+      <div id="empty" class="empty" style="display:none"></div>
+    </div>
+  </div>
+</div>
+<script src="/assets/i18n.js"></script>
+<script>
+const API = '/api/admin';
+const token = localStorage.getItem('admin_token');
+if (!token) window.location.href = '/admin/index.html';
+const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+renderSidebar('clients');
+document.getElementById('pageTitle').textContent = t('clients_title');
+document.getElementById('createTitle').textContent = t('clients_create_title');
+document.getElementById('lName').textContent = t('clients_name_label');
+document.getElementById('clientName').placeholder = t('clients_name_placeholder');
+document.getElementById('lUris').textContent = t('clients_uris_label');
+document.getElementById('createBtn').textContent = t('clients_create_btn');
+document.getElementById('successTitle').textContent = t('clients_success_title');
+document.getElementById('successDesc').textContent = t('clients_success_desc');
+document.getElementById('lCid').textContent = t('clients_id_label');
+document.getElementById('lCsecret').textContent = t('clients_secret_label');
+document.getElementById('dismissBtn').textContent = t('clients_dismiss');
+document.getElementById('registeredTitle').textContent = t('clients_registered');
+document.getElementById('thName').textContent = t('clients_th_name');
+document.getElementById('thId').textContent = t('clients_th_id');
+document.getElementById('thUris').textContent = t('clients_th_uris');
+document.getElementById('thCreated').textContent = t('clients_th_created');
+document.getElementById('thActions').textContent = t('clients_th_actions');
+document.getElementById('empty').textContent = t('clients_empty');
+
+function logout() { localStorage.removeItem('admin_token'); window.location.href = '/admin/index.html'; }
+function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2000); }
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, { headers, ...opts });
+  if (res.status === 401) { logout(); return; }
+  return res.json();
+}
+
+function fmtDate(s) { if (!s) return '-'; return new Date(s).toLocaleDateString(); }
+
+async function loadClients() {
+  const data = await api('/clients');
+  const list = document.getElementById('clientList');
+  const empty = document.getElementById('empty');
+  if (!data.clients.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = data.clients.map(c => `
+    <tr>
+      <td>${esc(c.name)}</td>
+      <td><span class="copiable"><code style="font-size:12px;word-break:break-all">${esc(c.client_id)}</code><button class="copy-inline" onclick="event.stopPropagation();copyRaw('${esc(c.client_id)}')" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></span></td>
+      <td style="font-size:12px;font-family:monospace;word-break:break-all">${c.redirect_uris.map(u => esc(u)).join('<br>')}</td>
+      <td style="font-size:13px;color:var(--text-muted)">${fmtDate(c.created_at)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="delClient('${esc(c.client_id)}')">${t('delete_btn')}</button></td>
+    </tr>
+  `).join('');
+}
+
+async function createClient() {
+  const name = document.getElementById('clientName').value.trim();
+  const uris = document.getElementById('redirectUris').value.trim().split('\n').map(s => s.trim()).filter(Boolean);
+  if (!name) { toast(t('clients_name_required')); return; }
+  const data = await api('/clients', { method: 'POST', body: JSON.stringify({ name, redirect_uris: uris }) });
+  document.getElementById('newClientId').textContent = data.client_id;
+  document.getElementById('newClientSecret').textContent = data.client_secret;
+  document.getElementById('newClientInfo').style.display = 'block';
+  document.getElementById('clientName').value = '';
+  document.getElementById('redirectUris').value = '';
+  loadClients();
+}
+
+async function delClient(clientId) {
+  if (!confirm(t('clients_confirm'))) return;
+  await api('/clients', { method: 'DELETE', body: JSON.stringify({ client_id: clientId }) });
+  toast(t('clients_deleted'));
+  loadClients();
+}
+
+function copyText(elId) {
+  const text = document.getElementById(elId).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(elId).closest('.secret-display').querySelector('.copy-btn');
+    btn.classList.add('copied');
+    toast(t('clients_copied'));
+    setTimeout(() => btn.classList.remove('copied'), 1500);
+  });
+}
+
+function copyRaw(text) { navigator.clipboard.writeText(text).then(() => toast(t('clients_copied'))); }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+loadClients();
+</script>
+</body>
+</html>

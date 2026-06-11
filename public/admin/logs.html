@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OIDC Admin - Logs</title>
+<link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar"></nav>
+  <div class="main">
+    <h1 id="pageTitle"></h1>
+    <div class="card">
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <input type="text" id="filterInput" style="flex:1" oninput="filterLogs()">
+        <button class="btn btn-outline" onclick="loadLogs()" id="refreshBtn"></button>
+      </div>
+      <table>
+        <thead><tr><th id="thTime"></th><th id="thAction"></th><th id="thEmail"></th><th id="thClient"></th><th id="thIp"></th></tr></thead>
+        <tbody id="logList"></tbody>
+      </table>
+      <div id="empty" class="empty" style="display:none"></div>
+    </div>
+  </div>
+</div>
+<script src="/assets/i18n.js"></script>
+<script>
+const API = '/api/admin';
+const token = localStorage.getItem('admin_token');
+if (!token) window.location.href = '/admin/index.html';
+const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+let allLogs = [];
+
+renderSidebar('logs');
+document.getElementById('pageTitle').textContent = t('logs_title');
+document.getElementById('filterInput').placeholder = t('logs_filter_placeholder');
+document.getElementById('refreshBtn').textContent = t('logs_refresh');
+document.getElementById('thTime').textContent = t('logs_th_time');
+document.getElementById('thAction').textContent = t('logs_th_action');
+document.getElementById('thEmail').textContent = t('logs_th_email');
+document.getElementById('thClient').textContent = t('logs_th_client');
+document.getElementById('thIp').textContent = t('logs_th_ip');
+document.getElementById('empty').textContent = t('logs_empty');
+
+function logout() { localStorage.removeItem('admin_token'); window.location.href = '/admin/index.html'; }
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, { headers, ...opts });
+  if (res.status === 401) { logout(); return; }
+  return res.json();
+}
+
+const actionColors = { authorize: 'var(--success)', token: 'var(--primary)', admin_login: '#f59e0b' };
+function fmtDate(s) { if (!s) return '-'; return new Date(s).toLocaleString(); }
+
+function renderLogs(logs) {
+  const list = document.getElementById('logList');
+  const empty = document.getElementById('empty');
+  if (!logs.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = logs.map(l => `
+    <tr>
+      <td style="font-size:13px;color:var(--text-muted);white-space:nowrap">${fmtDate(l.timestamp)}</td>
+      <td><span class="badge" style="background:${actionColors[l.action]||'var(--text-muted)'}22;color:${actionColors[l.action]||'var(--text-muted)'}">${esc(l.action)}</span></td>
+      <td style="font-size:13px">${esc(l.email||'-')}</td>
+      <td style="font-size:12px;font-family:monospace;color:var(--text-muted);word-break:break-all">${l.client_id?esc(l.client_id):'-'}</td>
+      <td style="font-size:12px;font-family:monospace;color:var(--text-muted)">${esc(l.ip||'-')}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadLogs() {
+  const data = await api('/logs');
+  allLogs = data.logs || [];
+  renderLogs(allLogs);
+}
+
+function filterLogs() {
+  const q = document.getElementById('filterInput').value.toLowerCase();
+  if (!q) { renderLogs(allLogs); return; }
+  renderLogs(allLogs.filter(l => (l.action||'').toLowerCase().includes(q) || (l.email||'').toLowerCase().includes(q) || (l.ip||'').toLowerCase().includes(q)));
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+loadLogs();
+</script>
+</body>
+</html>

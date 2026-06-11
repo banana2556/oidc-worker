@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OIDC Admin - Branding</title>
+<link rel="stylesheet" href="/assets/admin.css">
+<style>
+.theme-previews{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;transition:grid-template-columns .35s ease}
+.theme-previews.settings-mode{grid-template-columns:repeat(3,1fr)}
+@media(max-width:900px){.theme-previews{grid-template-columns:1fr}.theme-previews.settings-mode{grid-template-columns:1fr}}
+.theme-preview-card{border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:all .3s ease;position:relative}
+.theme-preview-card:hover{border-color:var(--text-muted)}
+.theme-preview-card.selected{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.theme-preview-card.fade-out{opacity:0;pointer-events:none}
+.badge-label{position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;z-index:1;display:none}
+.theme-preview-card.selected .badge-label{display:block}
+.theme-preview-card iframe{width:100%;height:280px;border:none;pointer-events:none}
+.theme-name{text-align:center;padding:10px;font-size:13px;font-weight:600;background:var(--surface);border-top:1px solid var(--border)}
+.theme-settings-card{display:none;border:2px solid var(--primary);border-radius:var(--radius);background:var(--surface);padding:24px;opacity:0;transition:opacity .3s ease;overflow-y:auto;grid-column:span 2}
+.theme-settings-card.visible{opacity:1}
+.settings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.settings-header h3{font-size:15px;font-weight:600;color:var(--text-heading);margin:0}
+.settings-close{background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer;padding:0 4px;line-height:1}
+.settings-close:hover{color:var(--text)}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.setting-row label{margin:0;font-size:13px;font-weight:500;color:var(--text)}
+.setting-row input[type=color]{width:40px;height:32px;border:1px solid var(--border-strong);border-radius:6px;padding:2px;cursor:pointer;background:var(--surface)}
+.setting-row input[type=color]:disabled{opacity:0.4;cursor:not-allowed}
+.setting-row input[type=range]{width:120px;accent-color:var(--primary)}
+.setting-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+.range-val{font-size:12px;color:var(--text-muted);min-width:36px;text-align:right;font-family:monospace}
+.rotate-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.rotate-label{display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;font-size:13px;font-weight:500;color:var(--text);user-select:none}
+.theme-color-control{display:flex;align-items:center;gap:10px}
+.auto-label{display:inline-flex!important;align-items:center;gap:6px;margin:0!important;font-size:12px!important;font-weight:500!important;color:var(--text-muted)!important;cursor:pointer;user-select:none}
+.branding-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,0.95fr);gap:22px;align-items:start}
+.links-card h3{font-size:15px;margin-bottom:8px}
+.links-card .hint{color:var(--text-muted);font-size:12px;line-height:1.5;margin-bottom:16px}
+.links-card .form-group{margin-bottom:14px}
+.links-card .form-group:last-child{margin-bottom:0}
+@media(max-width:1040px){.branding-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar"></nav>
+  <div class="main">
+    <h1 id="pageTitle"></h1>
+
+    <div class="branding-grid">
+      <div class="card">
+        <div class="form-group">
+          <label for="orgTitle" id="lOrgTitle"></label>
+          <input type="text" id="orgTitle" placeholder="Sign In" oninput="updateAllPreviews()">
+        </div>
+        <div class="form-group">
+          <label for="iconUrl"><span id="lIconUrl"></span> <span style="color:var(--text-muted);font-weight:normal" id="lIconHint"></span></label>
+          <input type="url" id="iconUrl" placeholder="https://example.com/icon.png" oninput="updateAllPreviews()">
+        </div>
+        <div class="form-group">
+          <div class="rotate-row">
+            <label style="margin-bottom:0"><span id="lBgUrl"></span> <span style="color:var(--text-muted);font-weight:normal" id="lBgHint"></span></label>
+            <label class="rotate-label">
+              <input type="checkbox" id="bgRotate" onchange="toggleBgRotate()">
+              <span id="lBgRotate"></span>
+            </label>
+          </div>
+          <input type="url" id="bgUrl" placeholder="https://example.com/background.jpg" oninput="updateAllPreviews()">
+          <textarea id="bgUrls" rows="4" style="display:none;font-family:monospace;resize:vertical" oninput="updateAllPreviews()"></textarea>
+        </div>
+        <div class="btn-group" style="margin-bottom:0">
+          <button class="btn btn-primary" onclick="saveBranding()" id="saveBtn"></button>
+        </div>
+      </div>
+
+      <div class="card links-card">
+        <h3 id="linksTitle"></h3>
+        <div class="hint" id="linksHint"></div>
+        <div class="form-group">
+          <label for="externalLinkName" id="lExternalLinkName"></label>
+          <input type="text" id="externalLinkName" oninput="updateExternalLinkField('name', this.value)">
+        </div>
+        <div class="form-group">
+          <label for="externalLinkIcon" id="lExternalLinkIcon"></label>
+          <input type="url" id="externalLinkIcon" placeholder="https://example.com/icon.png" oninput="updateExternalLinkField('icon_url', this.value)">
+        </div>
+        <div class="form-group">
+          <label for="externalLinkUrl" id="lExternalLinkUrl"></label>
+          <input type="url" id="externalLinkUrl" placeholder="https://example.com" oninput="updateExternalLinkField('url', this.value)">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label style="margin-bottom:12px"><span id="lTheme"></span> <span style="color:var(--text-muted);font-weight:normal" id="lThemeHint"></span></label>
+      <div class="theme-previews" id="themePreviews">
+        <div class="theme-preview-card" data-theme="modern" onclick="selectTheme('modern')">
+          <span class="badge-label"></span>
+          <iframe id="preview-modern"></iframe>
+          <div class="theme-name">Modern</div>
+        </div>
+        <div class="theme-preview-card" data-theme="minimal" onclick="selectTheme('minimal')">
+          <span class="badge-label"></span>
+          <iframe id="preview-minimal"></iframe>
+          <div class="theme-name">Minimal</div>
+        </div>
+        <div class="theme-preview-card" data-theme="glass" onclick="selectTheme('glass')">
+          <span class="badge-label"></span>
+          <iframe id="preview-glass"></iframe>
+          <div class="theme-name">Glass</div>
+        </div>
+        <div class="theme-settings-card" id="settingsCard">
+          <div class="settings-header">
+            <h3 id="settingsTitle"></h3>
+            <button class="settings-close" onclick="closeSettings()">&times;</button>
+          </div>
+          <div id="settingsContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/assets/i18n.js"></script>
+<script>
+var API = '/api/admin';
+var token = localStorage.getItem('admin_token');
+if (!token) window.location.href = '/admin/index.html';
+var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+
+var currentTheme = 'glass';
+var editingTheme = null;
+var themeSettings = {
+  modern:  { bg_color: '#1e1a15', btn_color: '#8A6B52', theme_color_auto: false, gradient: true, gradient_start: '#8A6B52', gradient_end: '#768D6A' },
+  minimal: { btn_color: '#111111', theme_color_auto: false, bg_color: '#ffffff', border_width: 1, border_radius: 8 },
+  glass:   { opacity: 15, blur: 20, btn_color: '#ffffff', theme_color_auto: false },
+};
+var themeColorMap = {};
+var externalLink = { name: '', icon_url: '', url: '' };
+
+renderSidebar('branding');
+document.getElementById('pageTitle').textContent = t('branding_title');
+document.getElementById('lOrgTitle').textContent = t('branding_org_title');
+document.getElementById('lIconUrl').textContent = t('branding_icon_url');
+document.getElementById('lIconHint').textContent = t('branding_icon_hint');
+document.getElementById('lBgUrl').textContent = t('branding_bg_url');
+document.getElementById('lBgHint').textContent = t('branding_bg_hint');
+document.getElementById('lBgRotate').textContent = t('branding_bg_rotate');
+document.getElementById('bgUrls').placeholder = t('branding_bg_rotate_placeholder');
+document.getElementById('saveBtn').textContent = t('branding_save');
+document.getElementById('linksTitle').textContent = t('branding_links_title');
+document.getElementById('linksHint').textContent = t('branding_links_hint');
+document.getElementById('lExternalLinkName').textContent = t('branding_link_name');
+document.getElementById('lExternalLinkIcon').textContent = t('branding_link_icon_url');
+document.getElementById('lExternalLinkUrl').textContent = t('branding_link_url');
+document.getElementById('lTheme').textContent = t('branding_theme');
+document.getElementById('lThemeHint').textContent = t('branding_theme_hint');
+document.querySelectorAll('.badge-label').forEach(function(el) { el.textContent = t('branding_active'); });
+
+function logout() { localStorage.removeItem('admin_token'); window.location.href = '/admin/index.html'; }
+function toast(msg) { var el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(function() { el.remove(); }, 2000); }
+
+function api(path, opts) {
+  opts = opts || {};
+  return fetch(API + path, Object.assign({ headers: headers }, opts)).then(function(res) {
+    if (res.status === 401) { logout(); return; }
+    return res.json();
+  });
+}
+
+function apiImage(path) {
+  return fetch(API + path, { headers: { 'Authorization': 'Bearer ' + token } }).then(function(res) {
+    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+    if (!res.ok) throw new Error('Image fetch failed');
+    return res.blob();
+  });
+}
+
+function loadExternalLink(link) {
+  externalLink = {
+    name: link && link.name ? link.name : '',
+    icon_url: link && link.icon_url ? link.icon_url : '',
+    url: link && link.url ? link.url : '',
+  };
+  document.getElementById('externalLinkName').value = externalLink.name;
+  document.getElementById('externalLinkIcon').value = externalLink.icon_url;
+  document.getElementById('externalLinkUrl').value = externalLink.url;
+}
+
+function updateExternalLinkField(field, value) {
+  externalLink[field] = value;
+  updateAllPreviews();
+}
+
+function getExternalLinkForSave() {
+  var link = {
+    name: String(externalLink.name || '').trim(),
+    icon_url: String(externalLink.icon_url || '').trim(),
+    url: String(externalLink.url || '').trim(),
+  };
+  return link.name && link.url ? link : null;
+}
+
+function toggleBgRotate() {
+  var rotate = document.getElementById('bgRotate').checked;
+  var single = document.getElementById('bgUrl');
+  var multi = document.getElementById('bgUrls');
+  if (rotate) {
+    multi.value = single.value || '';
+    single.style.display = 'none';
+    multi.style.display = 'block';
+  } else {
+    var lines = multi.value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+    single.value = lines[0] || '';
+    single.style.display = 'block';
+    multi.style.display = 'none';
+  }
+  updateAllPreviews();
+}
+
+function selectTheme(theme) {
+  if (editingTheme === theme) {
+    closeSettings();
+    return;
+  }
+  if (editingTheme) closeSettingsInstant();
+
+  currentTheme = theme;
+  document.querySelectorAll('.theme-preview-card').forEach(function(el) {
+    el.classList.toggle('selected', el.dataset.theme === theme);
+  });
+
+  editingTheme = theme;
+  var container = document.getElementById('themePreviews');
+  document.querySelectorAll('.theme-preview-card').forEach(function(el) {
+    if (el.dataset.theme !== theme) el.classList.add('fade-out');
+  });
+  populateSettingsCard(theme);
+  setTimeout(function() {
+    document.querySelectorAll('.theme-preview-card.fade-out').forEach(function(el) {
+      el.style.display = 'none';
+    });
+    container.classList.add('settings-mode');
+    var card = document.getElementById('settingsCard');
+    card.style.display = 'block';
+    requestAnimationFrame(function() { card.classList.add('visible'); });
+  }, 280);
+}
+
+function closeSettingsInstant() {
+  if (!editingTheme) return;
+  editingTheme = null;
+  var card = document.getElementById('settingsCard');
+  card.classList.remove('visible');
+  card.style.display = 'none';
+  document.getElementById('themePreviews').classList.remove('settings-mode');
+  document.querySelectorAll('.theme-preview-card').forEach(function(el) {
+    el.style.display = '';
+    el.classList.remove('fade-out');
+  });
+}
+
+function closeSettings() {
+  if (!editingTheme) return;
+  editingTheme = null;
+  var card = document.getElementById('settingsCard');
+  card.classList.remove('visible');
+  card.style.display = 'none';
+  document.getElementById('themePreviews').classList.remove('settings-mode');
+  document.querySelectorAll('.theme-preview-card').forEach(function(el) { el.style.display = ''; });
+  requestAnimationFrame(function() {
+    document.querySelectorAll('.theme-preview-card.fade-out').forEach(function(el) {
+      el.classList.remove('fade-out');
+    });
+  });
+  updateAllPreviews();
+}
+
+var themeNames = { modern: 'Modern', minimal: 'Minimal', glass: 'Glass' };
+
+function renderThemeColorControl(s) {
+  var checked = s.theme_color_auto ? ' checked' : '';
+  var disabled = s.theme_color_auto ? ' disabled' : '';
+  return '<div class="setting-row"><label>' + t('theme_btn_color') + '</label>' +
+    '<div class="theme-color-control">' +
+      '<label class="auto-label"><input type="checkbox" id="s-auto"' + checked + ' onchange="onSC();toggleThemeColorAuto()"><span>' + t('theme_auto') + '</span></label>' +
+      '<input type="color" id="s-btn" value="' + s.btn_color + '" oninput="onSC()"' + disabled + '>' +
+    '</div></div>';
+}
+
+function populateSettingsCard(theme) {
+  document.getElementById('settingsTitle').textContent = themeNames[theme] + ' ' + t('branding_settings');
+  var c = document.getElementById('settingsContent');
+  var s = themeSettings[theme];
+
+  if (theme === 'modern') {
+    var gd = s.gradient ? ' checked' : '';
+    var geDisabled = s.gradient ? '' : ' disabled';
+    var geOpacity = s.gradient ? '1' : '0.4';
+    c.innerHTML =
+      '<div class="setting-row"><label>' + t('theme_bg_color') + '</label><input type="color" id="s-bg" value="' + s.bg_color + '" oninput="onSC()"></div>' +
+      renderThemeColorControl(s) +
+      '<div class="setting-row"><label>' + t('theme_gradient') + '</label><input type="checkbox" id="s-grad"' + gd + ' onchange="onSC();toggleGrad()"></div>' +
+      '<div class="setting-row"><label>' + t('theme_gradient_end') + '</label><input type="color" id="s-ge" value="' + s.gradient_end + '" oninput="onSC()"' + geDisabled + ' style="opacity:' + geOpacity + '"></div>';
+  } else if (theme === 'minimal') {
+    c.innerHTML =
+      renderThemeColorControl(s) +
+      '<div class="setting-row"><label>' + t('theme_bg_color') + '</label><input type="color" id="s-bg" value="' + s.bg_color + '" oninput="onSC()"></div>' +
+      '<div class="setting-row"><label>' + t('theme_border_width') + '</label><div style="display:flex;align-items:center;gap:8px"><input type="range" id="s-bw" min="0" max="4" value="' + s.border_width + '" oninput="onSC()"><span class="range-val" id="s-bw-v">' + s.border_width + 'px</span></div></div>' +
+      '<div class="setting-row"><label>' + t('theme_border_radius') + '</label><div style="display:flex;align-items:center;gap:8px"><input type="range" id="s-br" min="0" max="24" value="' + s.border_radius + '" oninput="onSC()"><span class="range-val" id="s-br-v">' + s.border_radius + 'px</span></div></div>';
+  } else {
+    c.innerHTML =
+      '<div class="setting-row"><label>' + t('theme_opacity') + '</label><div style="display:flex;align-items:center;gap:8px"><input type="range" id="s-op" min="5" max="50" value="' + s.opacity + '" oninput="onSC()"><span class="range-val" id="s-op-v">' + s.opacity + '%</span></div></div>' +
+      '<div class="setting-row"><label>' + t('theme_blur') + '</label><div style="display:flex;align-items:center;gap:8px"><input type="range" id="s-blur" min="5" max="40" value="' + s.blur + '" oninput="onSC()"><span class="range-val" id="s-blur-v">' + s.blur + 'px</span></div></div>' +
+      renderThemeColorControl(s);
+  }
+  toggleThemeColorAuto();
+}
+
+function toggleGrad() {
+  var ge = document.getElementById('s-ge');
+  if (ge) {
+    var on = document.getElementById('s-grad').checked;
+    ge.disabled = !on;
+    ge.style.opacity = on ? '1' : '0.4';
+  }
+}
+
+function toggleThemeColorAuto() {
+  var auto = document.getElementById('s-auto');
+  var btn = document.getElementById('s-btn');
+  if (auto && btn) {
+    btn.disabled = auto.checked;
+  }
+}
+
+function onSC() {
+  var theme = editingTheme;
+  if (!theme) return;
+  var s = themeSettings[theme];
+  var auto = document.getElementById('s-auto');
+  var btn = document.getElementById('s-btn');
+  s.theme_color_auto = auto ? auto.checked : false;
+  if (theme === 'modern') {
+    s.bg_color = document.getElementById('s-bg').value;
+    if (btn && !s.theme_color_auto) s.btn_color = btn.value;
+    s.gradient_start = s.btn_color;
+    s.gradient = document.getElementById('s-grad').checked;
+    var ge = document.getElementById('s-ge');
+    if (ge) s.gradient_end = ge.value;
+  } else if (theme === 'minimal') {
+    if (btn && !s.theme_color_auto) s.btn_color = btn.value;
+    s.bg_color = document.getElementById('s-bg').value;
+    var bw = parseInt(document.getElementById('s-bw').value);
+    var br = parseInt(document.getElementById('s-br').value);
+    s.border_width = bw;
+    s.border_radius = br;
+    document.getElementById('s-bw-v').textContent = bw + 'px';
+    document.getElementById('s-br-v').textContent = br + 'px';
+  } else {
+    var op = parseInt(document.getElementById('s-op').value);
+    var bl = parseInt(document.getElementById('s-blur').value);
+    s.opacity = op;
+    s.blur = bl;
+    if (btn && !s.theme_color_auto) s.btn_color = btn.value;
+    document.getElementById('s-op-v').textContent = op + '%';
+    document.getElementById('s-blur-v').textContent = bl + 'px';
+  }
+  updatePreview(theme);
+}
+
+function hexRgb(hex) {
+  var h = hex.replace('#', '');
+  return [parseInt(h.slice(0,2),16)||0, parseInt(h.slice(2,4),16)||0, parseInt(h.slice(4,6),16)||0];
+}
+
+function rgbHex(rgb) {
+  return '#' + rgb.map(function(v) {
+    return Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  }).join('');
+}
+
+function luminance(rgb) {
+  var a = rgb.map(function(v) {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+}
+
+function contrast(a, b) {
+  var l1 = luminance(a);
+  var l2 = luminance(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+function rgbHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  var max = Math.max(r, g, b), min = Math.min(r, g, b);
+  var h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    var d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+  }
+  return [h, s, l];
+}
+
+function hslRgb(h, s, l) {
+  var r, g, b;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    function hue2rgb(p, q, t) {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    }
+    var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    var p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+  return [r * 255, g * 255, b * 255];
+}
+
+function readableAccent(rgb) {
+  var hsl = rgbHsl(rgb[0], rgb[1], rgb[2]);
+  var s = Math.max(hsl[1], 0.42);
+  var l = Math.min(Math.max(hsl[2], 0.26), 0.48);
+  var out = hslRgb(hsl[0], s, l);
+  var guard = 0;
+  while (contrast(out, [255, 255, 255]) < 4.5 && guard < 12) {
+    l -= 0.035;
+    out = hslRgb(hsl[0], s, l);
+    guard++;
+  }
+  return out;
+}
+
+function setDocumentThemeColor(doc, hex, adjust) {
+  var rgb = hexRgb(hex || '#111111');
+  if (adjust) rgb = readableAccent(rgb);
+  doc.documentElement.style.setProperty('--theme-color', rgbHex(rgb));
+  doc.documentElement.style.setProperty('--theme-color-rgb', rgb.map(function(v) { return Math.round(v); }).join(','));
+}
+
+function sampleThemeColorFromBlob(blob) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    var objectUrl = URL.createObjectURL(blob);
+    img.onload = function() {
+      try {
+        URL.revokeObjectURL(objectUrl);
+        var size = 48;
+        var canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        var ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, size, size);
+        var data = ctx.getImageData(0, 0, size, size).data;
+        var buckets = {};
+        for (var i = 0; i < data.length; i += 16) {
+          if (data[i + 3] < 180) continue;
+          var rgb = [data[i], data[i + 1], data[i + 2]];
+          var hsl = rgbHsl(rgb[0], rgb[1], rgb[2]);
+          if (hsl[1] < 0.12 || hsl[2] < 0.08 || hsl[2] > 0.92) continue;
+          var key = [Math.round(rgb[0] / 24), Math.round(rgb[1] / 24), Math.round(rgb[2] / 24)].join(',');
+          if (!buckets[key]) buckets[key] = { rgb: [0, 0, 0], count: 0, s: 0, l: 0 };
+          buckets[key].rgb[0] += rgb[0];
+          buckets[key].rgb[1] += rgb[1];
+          buckets[key].rgb[2] += rgb[2];
+          buckets[key].count++;
+          buckets[key].s += hsl[1];
+          buckets[key].l += hsl[2];
+        }
+        var best = null;
+        Object.keys(buckets).forEach(function(key) {
+          var b = buckets[key];
+          var rgb = [b.rgb[0] / b.count, b.rgb[1] / b.count, b.rgb[2] / b.count];
+          var score = b.count * (0.7 + b.s / b.count) * (1.15 - Math.abs(b.l / b.count - 0.42));
+          if (!best || score > best.score) best = { rgb: rgb, score: score };
+        });
+        if (!best) { reject(new Error('no color')); return; }
+        resolve(rgbHex(readableAccent(best.rgb)));
+      } catch (err) {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      }
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('image load failed'));
+    };
+    img.src = objectUrl;
+  });
+}
+
+function computeThemeColorMap(bgUrls) {
+  var nextMap = {};
+  var jobs = bgUrls.map(function(url) {
+    return apiImage('/theme-image' + '?src=' + encodeURIComponent(url))
+      .then(sampleThemeColorFromBlob)
+      .then(function(hex) {
+        nextMap[url] = hex;
+      })
+      .catch(function() {
+        if (themeColorMap[url]) nextMap[url] = themeColorMap[url];
+      });
+  });
+  return Promise.all(jobs).then(function() {
+    themeColorMap = nextMap;
+    return nextMap;
+  });
+}
+
+function getThemeStyles(key) {
+  var s = themeSettings[key];
+  var themeRgb = hexRgb(s.btn_color);
+  if (key === 'modern') {
+    var btnBg = s.gradient
+      ? 'linear-gradient(135deg,var(--theme-color),' + s.gradient_end + ')'
+      : 'var(--theme-color)';
+    var bgRgb = hexRgb(s.bg_color);
+    return {
+      bg: s.bg_color,
+      color: s.btn_color,
+      auto: !!s.theme_color_auto,
+      card: 'background:rgba(' + bgRgb[0] + ',' + bgRgb[1] + ',' + bgRgb[2] + ',0.85);border:1px solid rgba(var(--theme-color-rgb),0.3);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.5);padding:28px 24px;',
+      btn: 'background:' + btnBg + ';color:#fff;border:none;border-radius:10px;padding:10px;font-size:12px;font-weight:600;width:100%;cursor:pointer;',
+      input: 'background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:9px 12px;color:#f0e8df;font-size:12px;width:100%;box-sizing:border-box;outline:none;',
+      text: 'color:#f0e8df;',
+    };
+  }
+  if (key === 'minimal') {
+    var bw = s.border_width;
+    var br = s.border_radius;
+    var btnR = Math.max(br - 2, 4);
+    var borderRgba = 'rgba(var(--theme-color-rgb),0.35)';
+    var inputBorderRgba = 'rgba(var(--theme-color-rgb),0.4)';
+    return {
+      bg: '#f5f5f5',
+      color: s.btn_color,
+      auto: !!s.theme_color_auto,
+      card: 'background:' + s.bg_color + ';border:' + bw + 'px solid ' + borderRgba + ';border-radius:' + br + 'px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:28px 24px;',
+      btn: 'background:var(--theme-color);color:#fff;border:none;border-radius:' + btnR + 'px;padding:10px;font-size:12px;font-weight:500;width:100%;cursor:pointer;',
+      input: 'background:#fff;border:' + bw + 'px solid ' + inputBorderRgba + ';border-radius:' + btnR + 'px;padding:9px 12px;color:#111;font-size:12px;width:100%;box-sizing:border-box;outline:none;',
+      text: 'color:#333;',
+    };
+  }
+  var op = (s.opacity / 100).toFixed(2);
+  var btnBlur = Math.min(s.blur + 10, 48);
+  return {
+    bg: 'linear-gradient(135deg, #0ea5e9, #8b5cf6, #ec4899)',
+    color: s.btn_color,
+    auto: !!s.theme_color_auto,
+    card: 'background:rgba(255,255,255,' + op + ');backdrop-filter:blur(' + s.blur + 'px) saturate(180%);-webkit-backdrop-filter:blur(' + s.blur + 'px) saturate(180%);border:1px solid rgba(255,255,255,0.3);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.2);padding:28px 24px;',
+    btn: 'background:rgba(var(--theme-color-rgb),0.25);backdrop-filter:blur(' + btnBlur + 'px);border:1px solid rgba(var(--theme-color-rgb),0.4);border-radius:10px;padding:10px;font-size:12px;font-weight:600;color:#fff;width:100%;cursor:pointer;',
+    input: 'background:rgba(255,255,255,' + op + ');backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:9px 12px;color:#fff;font-size:12px;width:100%;box-sizing:border-box;outline:none;',
+    text: 'color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(0,0,0,0.25);',
+  };
+}
+
+function getPreviewBgUrl() {
+  return getConfiguredBgUrls()[0] || '';
+}
+
+function getConfiguredBgUrls() {
+  var rotate = document.getElementById('bgRotate').checked;
+  var raw = rotate ? document.getElementById('bgUrls').value : document.getElementById('bgUrl').value;
+  var seen = {};
+  return String(raw || '').split('\n').map(function(s) { return s.trim(); }).filter(function(url) {
+    if (!url || seen[url]) return false;
+    seen[url] = true;
+    return true;
+  });
+}
+
+function renderPreview(themeKey) {
+  var title = document.getElementById('orgTitle').value || 'Sign In';
+  var iconUrl = document.getElementById('iconUrl').value;
+  var bgUrl = getPreviewBgUrl();
+  var ts = getThemeStyles(themeKey);
+  var themeRgb = hexRgb(ts.color);
+  var bgStyle = bgUrl ? "background:url('" + bgUrl + "') center/cover no-repeat" : 'background:' + ts.bg;
+  var iconHtml = iconUrl ? '<img class="brand-icon" src="' + esc(iconUrl) + '">' : '';
+  var externalLinkForPreview = getExternalLinkForSave();
+  var linksHtml = externalLinkForPreview ? '<div class="external-links">' + [externalLinkForPreview].map(function(link) {
+    var linkIcon = link.icon_url ? '<img class="external-link-icon" src="' + esc(link.icon_url) + '">' : '<span class="external-link-icon"></span>';
+    return '<span class="external-link">' + linkIcon + '<span>' + esc(link.name) + '</span></span>';
+  }).join('') + '</div>' : '';
+  return '<!DOCTYPE html><html><head><style>' +
+    '*{margin:0;padding:0;box-sizing:border-box}' +
+    ':root{--theme-color:' + ts.color + ';--theme-color-rgb:' + themeRgb.join(',') + '}' +
+    'body{height:100%;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;' + bgStyle + ';min-height:100vh}' +
+    '.card{' + ts.card + ';width:220px}.brand{margin-bottom:14px}.brand.has-logo{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:7px;row-gap:3px}.brand-icon{grid-row:1 / span 2;height:32px;max-width:54px;border-radius:4px;object-fit:contain}' +
+    'h1{font-size:15px;' + ts.text + ';margin:0}.sub{font-size:10px;line-height:1.35;margin:3px 0 0;opacity:0.7;' + ts.text + '}.brand.has-logo .sub{grid-column:2;margin-top:0}' +
+    'label{display:block;font-size:10px;font-weight:500;margin-bottom:3px;' + ts.text + ';opacity:0.8}' +
+    'input{' + ts.input + ';margin-bottom:10px;font-size:11px;padding:8px 10px}' +
+    'button{' + ts.btn + ';font-size:11px;padding:8px;margin-top:4px}' +
+    '.external-links{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}.external-link{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:46px;text-align:center;font-size:8px;line-height:1.2;' + ts.text + '}.external-link-icon{width:24px;height:24px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,0.18);border:1px solid rgba(var(--theme-color-rgb),0.35)}' +
+    '</style></head><body><div class="card"><div class="brand' + (iconUrl ? ' has-logo' : '') + '">' + iconHtml + '<h1>' + esc(title) + '</h1>' +
+    '<p class="sub">Enter your email to continue</p></div><label>Email Address</label>' +
+    '<input type="email" placeholder="you@company.com" disabled><button disabled>Continue</button>' + linksHtml + '</div></body></html>';
+}
+
+function updateAllPreviews() {
+  ['modern', 'minimal', 'glass'].forEach(function(key) {
+    updatePreview(key);
+  });
+}
+
+function updatePreview(key) {
+  var iframe = document.getElementById('preview-' + key);
+  var bgUrl = getPreviewBgUrl();
+  var ts = getThemeStyles(key);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(renderPreview(key));
+  iframe.contentDocument.close();
+  var color = ts.auto && bgUrl && themeColorMap[bgUrl] ? themeColorMap[bgUrl] : ts.color;
+  setDocumentThemeColor(iframe.contentDocument, color, false);
+}
+
+function loadBranding() {
+  api('/branding').then(function(data) {
+    if (data && data.branding) {
+      document.getElementById('orgTitle').value = data.branding.title || '';
+      document.getElementById('iconUrl').value = data.branding.icon_url || '';
+      var rotate = data.branding.bg_rotate || false;
+      document.getElementById('bgRotate').checked = rotate;
+      if (rotate) {
+        document.getElementById('bgUrl').style.display = 'none';
+        document.getElementById('bgUrls').style.display = 'block';
+        document.getElementById('bgUrls').value = data.branding.bg_image_url || '';
+      } else {
+        document.getElementById('bgUrl').value = data.branding.bg_image_url || '';
+      }
+      currentTheme = data.branding.theme || 'glass';
+      themeColorMap = data.branding.theme_color_map || {};
+      loadExternalLink(Array.isArray(data.branding.external_links) ? data.branding.external_links[0] : null);
+      if (data.branding.theme_settings) {
+        var ts = data.branding.theme_settings;
+        if (ts.modern) {
+          Object.assign(themeSettings.modern, ts.modern);
+          if (ts.modern.gradient_start) themeSettings.modern.btn_color = ts.modern.gradient_start;
+        }
+        if (ts.minimal) Object.assign(themeSettings.minimal, ts.minimal);
+        if (ts.glass) Object.assign(themeSettings.glass, ts.glass);
+      }
+    }
+    document.querySelectorAll('.theme-preview-card').forEach(function(el) {
+      el.classList.toggle('selected', el.dataset.theme === currentTheme);
+    });
+    updateAllPreviews();
+  });
+}
+
+function saveBranding() {
+  var rotate = document.getElementById('bgRotate').checked;
+  themeSettings.modern.gradient_start = themeSettings.modern.btn_color;
+  var bgImageUrl = rotate ? document.getElementById('bgUrls').value || '' : document.getElementById('bgUrl').value || '';
+  var linkForSave = getExternalLinkForSave();
+  computeThemeColorMap(getConfiguredBgUrls()).then(function(map) {
+    var branding = {
+      title: document.getElementById('orgTitle').value || 'Sign In',
+      icon_url: document.getElementById('iconUrl').value || '',
+      bg_image_url: bgImageUrl,
+      bg_rotate: rotate,
+      theme: currentTheme,
+      theme_color_map: map,
+      theme_settings: themeSettings,
+      external_links: linkForSave ? [linkForSave] : [],
+    };
+    return api('/branding', { method: 'PUT', body: JSON.stringify(branding) });
+  }).then(function() {
+    updateAllPreviews();
+    toast(t('branding_saved'));
+  });
+}
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
+loadBranding();
+</script>
+</body>
+</html>

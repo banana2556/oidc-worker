@@ -1,0 +1,16 @@
+{
+  "name": "oidc-idp-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node -e \"require('fs').mkdirSync('.tmp',{recursive:true})\" && esbuild tests/branding-flow.test.ts --bundle --platform=node --format=esm --outfile=.tmp/branding-flow.test.mjs && node --test .tmp/branding-flow.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240512.0",
+    "typescript": "^5.4.5",
+    "wrangler": "^3.57.0"
+  }
+}

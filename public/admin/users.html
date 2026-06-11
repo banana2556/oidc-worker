@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OIDC Admin - Users</title>
+<link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar"></nav>
+  <div class="main">
+    <h1 id="pageTitle"></h1>
+    <div class="card">
+      <table>
+        <thead><tr><th id="thEmail"></th><th id="thSub"></th><th id="thCreated"></th><th id="thLogin"></th><th style="width:80px" id="thActions"></th></tr></thead>
+        <tbody id="userList"></tbody>
+      </table>
+      <div id="empty" class="empty" style="display:none"></div>
+    </div>
+  </div>
+</div>
+<script src="/assets/i18n.js"></script>
+<script>
+const API = '/api/admin';
+const token = localStorage.getItem('admin_token');
+if (!token) window.location.href = '/admin/index.html';
+const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+renderSidebar('users');
+document.getElementById('pageTitle').textContent = t('users_title');
+document.getElementById('thEmail').textContent = t('users_th_email');
+document.getElementById('thSub').textContent = t('users_th_sub');
+document.getElementById('thCreated').textContent = t('users_th_created');
+document.getElementById('thLogin').textContent = t('users_th_last_login');
+document.getElementById('thActions').textContent = t('users_th_actions');
+document.getElementById('empty').textContent = t('users_empty');
+
+function logout() { localStorage.removeItem('admin_token'); window.location.href = '/admin/index.html'; }
+function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2000); }
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, { headers, ...opts });
+  if (res.status === 401) { logout(); return; }
+  return res.json();
+}
+
+function fmtDate(s) { if (!s) return '-'; return new Date(s).toLocaleString(); }
+
+async function loadUsers() {
+  const data = await api('/users');
+  const list = document.getElementById('userList');
+  const empty = document.getElementById('empty');
+  if (!data.users.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = data.users.map(u => `
+    <tr>
+      <td>${esc(u.email)}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--text-muted);word-break:break-all">${esc(u.sub)}</td>
+      <td style="font-size:13px;color:var(--text-muted)">${fmtDate(u.created_at)}</td>
+      <td style="font-size:13px;color:var(--text-muted)">${fmtDate(u.last_login)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="delUser('${esc(u.email)}')">${t('delete_btn')}</button></td>
+    </tr>
+  `).join('');
+}
+
+async function delUser(email) {
+  if (!confirm(`${t('users_confirm')} "${email}"?`)) return;
+  await api('/users', { method: 'DELETE', body: JSON.stringify({ email }) });
+  toast(t('users_deleted'));
+  loadUsers();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+loadUsers();
+</script>
+</body>
+</html>

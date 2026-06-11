@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OIDC Admin - Login</title>
+<link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body>
+<div class="login-container">
+  <div class="login-card">
+    <h1 id="lTitle"></h1>
+    <p id="lSubtitle"></p>
+    <div class="form-group">
+      <label for="password" id="lPwLabel"></label>
+      <input type="password" id="password" autofocus>
+    </div>
+    <button class="btn btn-primary" onclick="login()" id="lBtn"></button>
+    <div id="error" style="color:var(--danger);font-size:13px;text-align:center;margin-top:12px;display:none"></div>
+  </div>
+</div>
+<script src="/assets/i18n.js"></script>
+<script>
+const API = '/api/admin';
+
+document.getElementById('lTitle').textContent = t('login_title');
+document.getElementById('lSubtitle').textContent = t('login_subtitle');
+document.getElementById('lPwLabel').textContent = t('login_password_label');
+document.getElementById('password').placeholder = t('login_password_placeholder');
+document.getElementById('lBtn').textContent = t('login_btn');
+
+document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+async function login() {
+  const pw = document.getElementById('password').value;
+  const errEl = document.getElementById('error');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch(`${API}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || t('login_error'); errEl.style.display = 'block'; return; }
+    localStorage.setItem('admin_token', data.token);
+    window.location.href = '/admin/domains.html';
+  } catch (e) { errEl.textContent = 'Connection error'; errEl.style.display = 'block'; }
+}
+
+if (localStorage.getItem('admin_token')) window.location.href = '/admin/domains.html';
+</script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OIDC Admin - Login Codes</title>
+<link rel="stylesheet" href="/assets/admin.css">
+<style>
+.hint{color:var(--text-muted);font-size:12px;line-height:1.5;margin-top:6px}
+.inline-check{display:inline-flex;align-items:center;gap:8px;margin:0;color:var(--text);font-size:13px;cursor:pointer}
+.settings-grid{display:grid;gap:12px}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer}
+.switch-row strong{display:block;color:var(--text-heading);font-size:14px;margin-bottom:3px}
+.switch-row small{display:block;color:var(--text-muted);font-size:12px;line-height:1.45;font-weight:500}
+.switch-row input{width:18px;height:18px}
+.usage-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.usage-input{max-width:160px}
+.usage-muted{color:var(--text-muted);font-size:12px;margin-top:4px}
+.code-cell{display:inline-flex;align-items:center;gap:8px;max-width:100%}
+.code-cell code{font-size:12px;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar"></nav>
+  <div class="main">
+    <h1 id="pageTitle"></h1>
+
+    <div class="card">
+      <h3 style="font-size:15px;margin-bottom:6px" id="securityTitle"></h3>
+      <div class="hint" style="margin-bottom:16px" id="globalNote"></div>
+      <div class="settings-grid">
+        <label class="switch-row" for="loginCodeEnabled">
+          <span>
+            <strong id="loginCodeToggleLabel"></strong>
+            <small id="loginCodeToggleDesc"></small>
+          </span>
+          <input type="checkbox" id="loginCodeEnabled" onchange="toggleLoginCode()">
+        </label>
+        <label class="switch-row" for="turnstileEnabled">
+          <span>
+            <strong id="turnstileToggleLabel"></strong>
+            <small id="turnstileToggleDesc"></small>
+          </span>
+          <input type="checkbox" id="turnstileEnabled" onchange="toggleTurnstile()">
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:15px;margin-bottom:16px" id="createTitle"></h3>
+      <div class="form-group">
+        <label for="newCode" id="lCode"></label>
+        <input type="text" id="newCode" autocomplete="off">
+        <div class="hint" id="autoHint"></div>
+      </div>
+      <div class="form-group">
+        <label for="maxUses" id="lMaxUses"></label>
+        <div class="usage-row">
+          <input type="number" id="maxUses" class="usage-input" min="1" step="1">
+          <label class="inline-check"><input type="checkbox" id="unlimited" onchange="toggleUnlimited()"><span id="lUnlimited"></span></label>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addCode()" id="createBtn"></button>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:15px;margin-bottom:16px" id="registeredTitle"></h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th id="thCode"></th><th id="thUsage"></th><th id="thCreated"></th><th style="width:80px" id="thActions"></th></tr></thead>
+          <tbody id="codeList"></tbody>
+        </table>
+      </div>
+      <div id="empty" class="empty" style="display:none"></div>
+    </div>
+  </div>
+</div>
+<script src="/assets/i18n.js"></script>
+<script>
+const API = '/api/admin';
+const token = localStorage.getItem('admin_token');
+if (!token) window.location.href = '/admin/index.html';
+const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+renderSidebar('login-codes');
+document.getElementById('pageTitle').textContent = t('login_codes_title');
+document.getElementById('securityTitle').textContent = t('login_codes_security_title');
+document.getElementById('globalNote').textContent = t('login_codes_global_note');
+document.getElementById('loginCodeToggleLabel').textContent = t('login_codes_login_code_toggle');
+document.getElementById('loginCodeToggleDesc').textContent = t('login_codes_login_code_desc');
+document.getElementById('turnstileToggleLabel').textContent = t('login_codes_turnstile_toggle');
+document.getElementById('turnstileToggleDesc').textContent = t('login_codes_turnstile_desc');
+document.getElementById('createTitle').textContent = t('login_codes_create_title');
+document.getElementById('lCode').textContent = t('login_codes_code_label');
+document.getElementById('newCode').placeholder = t('login_codes_code_placeholder');
+document.getElementById('autoHint').textContent = t('login_codes_auto_hint');
+document.getElementById('lMaxUses').textContent = t('login_codes_max_uses_label');
+document.getElementById('maxUses').placeholder = t('login_codes_max_uses_placeholder');
+document.getElementById('lUnlimited').textContent = t('login_codes_unlimited');
+document.getElementById('createBtn').textContent = t('login_codes_create_btn');
+document.getElementById('registeredTitle').textContent = t('login_codes_registered');
+document.getElementById('thCode').textContent = t('login_codes_th_code');
+document.getElementById('thUsage').textContent = t('login_codes_th_usage');
+document.getElementById('thCreated').textContent = t('login_codes_th_created');
+document.getElementById('thActions').textContent = t('login_codes_th_actions');
+document.getElementById('empty').textContent = t('login_codes_empty');
+
+function logout() { localStorage.removeItem('admin_token'); window.location.href = '/admin/index.html'; }
+function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2000); }
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, { headers, ...opts });
+  if (res.status === 401) { logout(); return; }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    toast(data.error || 'Request failed');
+    throw new Error(data.error || 'Request failed');
+  }
+  return data;
+}
+
+async function loadSecurity() {
+  const data = await api('/security');
+  const security = data.security || {};
+  document.getElementById('loginCodeEnabled').checked = security.login_code_enabled !== false;
+  document.getElementById('turnstileEnabled').checked = security.turnstile_enabled !== false;
+}
+
+async function saveSecurity() {
+  await api('/security', {
+    method: 'PUT',
+    body: JSON.stringify({
+      login_code_enabled: document.getElementById('loginCodeEnabled').checked,
+      turnstile_enabled: document.getElementById('turnstileEnabled').checked,
+    }),
+  });
+  toast(t('login_codes_security_saved'));
+}
+
+function toggleLoginCode() { saveSecurity(); }
+function toggleTurnstile() { saveSecurity(); }
+
+function toggleUnlimited() {
+  const unlimited = document.getElementById('unlimited').checked;
+  const maxUses = document.getElementById('maxUses');
+  maxUses.disabled = unlimited;
+  if (unlimited) maxUses.value = '';
+}
+
+function fmtDate(s) { if (!s) return '-'; return new Date(s).toLocaleString(); }
+
+function fmtUsage(code) {
+  if (code.max_uses === null) return `${code.used} / ${t('login_codes_unlimited')}`;
+  return `${code.used} / ${code.max_uses}`;
+}
+
+async function loadCodes() {
+  const data = await api('/login-codes');
+  const codes = data.login_codes || [];
+  const list = document.getElementById('codeList');
+  const empty = document.getElementById('empty');
+  if (!codes.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = codes.map(code => {
+    const fullCode = code.code || '';
+    const displayCode = fullCode || code.code_hint || '-';
+    const copyButton = fullCode
+      ? `<button class="icon-btn" data-code="${attr(fullCode)}" onclick="copyCode(this.dataset.code)" title="${attr(t('login_codes_copy'))}" aria-label="${attr(t('login_codes_copy'))}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`
+      : '';
+    const legacyNote = fullCode ? '' : `<div class="usage-muted">${t('login_codes_legacy_hidden')}</div>`;
+    return `
+      <tr>
+        <td><span class="code-cell"><code>${esc(displayCode)}</code>${copyButton}</span>${legacyNote}</td>
+        <td><span>${esc(fmtUsage(code))}</span>${code.max_uses !== null && code.used >= code.max_uses ? `<div class="usage-muted">${t('login_codes_exhausted')}</div>` : ''}</td>
+        <td style="font-size:13px;color:var(--text-muted)">${esc(fmtDate(code.created_at))}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="delCode('${attr(code.id)}')">${t('delete_btn')}</button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function addCode() {
+  const code = document.getElementById('newCode').value.trim();
+  const unlimited = document.getElementById('unlimited').checked;
+  const maxUsesValue = document.getElementById('maxUses').value.trim();
+  if (!unlimited && (!maxUsesValue || Number(maxUsesValue) < 1)) { toast(t('login_codes_bad_limit')); return; }
+  const payload = { max_uses: unlimited ? null : Number(maxUsesValue) };
+  if (code) payload.code = code;
+  await api('/login-codes', { method: 'POST', body: JSON.stringify(payload) });
+  document.getElementById('newCode').value = '';
+  document.getElementById('maxUses').value = '';
+  document.getElementById('unlimited').checked = false;
+  toggleUnlimited();
+  toast(t('login_codes_added'));
+  loadCodes();
+}
+
+async function delCode(id) {
+  if (!confirm(t('login_codes_confirm'))) return;
+  await api('/login-codes', { method: 'DELETE', body: JSON.stringify({ id }) });
+  toast(t('login_codes_deleted'));
+  loadCodes();
+}
+
+function copyCode(text) {
+  navigator.clipboard.writeText(text).then(() => toast(t('login_codes_copied')));
+}
+
+document.getElementById('newCode').addEventListener('keydown', e => { if (e.key === 'Enter') addCode(); });
+document.getElementById('maxUses').addEventListener('keydown', e => { if (e.key === 'Enter') addCode(); });
+function esc(s) { const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+function attr(s) { return esc(s).replace(/"/g, '&quot;'); }
+loadSecurity();
+loadCodes();
+</script>
+</body>
+</html>
