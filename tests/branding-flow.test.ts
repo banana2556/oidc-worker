@@ -24,7 +24,7 @@ function createKv() {
       const keys = Array.from(store.keys())
         .filter((name) => !options?.prefix || name.startsWith(options.prefix))
         .map((name) => ({ name }));
-      return { keys };
+      return { keys, list_complete: true };
     },
     dump(key: string) {
       return store.get(key) ?? null;
@@ -131,7 +131,7 @@ test('authorize login page renders persisted theme settings', async () => {
   }));
 
   const response = await handleAuthorizeGet(
-    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback'),
+    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback&response_type=code&scope=openid'),
     env as any,
   );
   const html = await response.text();
@@ -169,7 +169,7 @@ test('authorize login page renders external links below submit and sizes logo to
   }));
 
   const response = await handleAuthorizeGet(
-    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback'),
+    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback&response_type=code&scope=openid'),
     env as any,
   );
   const html = await response.text();
@@ -200,7 +200,7 @@ test('authorize login page prefills email from login_hint', async () => {
   }]));
 
   const response = await handleAuthorizeGet(
-    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback&login_hint=user%40example.com'),
+    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback&response_type=code&scope=openid&login_hint=user%40example.com'),
     env as any,
   );
   const html = await response.text();
@@ -220,7 +220,7 @@ test('authorize login page does not remember last email when login_hint is absen
   }]));
 
   const response = await handleAuthorizeGet(
-    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback'),
+    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback&response_type=code&scope=openid'),
     env as any,
   );
   const html = await response.text();
@@ -242,7 +242,7 @@ test('authorize login page includes login code field', async () => {
   }]));
 
   const response = await handleAuthorizeGet(
-    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback'),
+    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback&response_type=code&scope=openid'),
     env as any,
   );
   const html = await response.text();
@@ -404,7 +404,7 @@ test('authorize login page renders Turnstile widget when configured', async () =
   }]));
 
   const response = await handleAuthorizeGet(
-    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback'),
+    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback&response_type=code&scope=openid'),
     env as any,
   );
   const html = await response.text();
@@ -499,7 +499,7 @@ test('admin security settings can disable Turnstile and login code globally', as
   }), env as any, '/api/admin/security');
   const settings = await listed.json() as { security: { turnstile_enabled: boolean; login_code_enabled: boolean; turnstile_configured?: boolean } };
   const loginPage = await handleAuthorizeGet(
-    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback'),
+    new Request('https://issuer.example/authorize?client_id=client-id&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback&response_type=code&scope=openid'),
     env as any,
   );
   const html = await loginPage.text();

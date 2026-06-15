@@ -1,4 +1,5 @@
-import { Env, TokenRecord } from '../types';
+import { Env } from '../types';
+import { verifyAccessToken } from '../crypto';
 
 export async function handleUserinfo(request: Request, env: Env): Promise<Response> {
   const auth = request.headers.get('Authorization') || '';
@@ -7,12 +8,10 @@ export async function handleUserinfo(request: Request, env: Env): Promise<Respon
   }
 
   const token = auth.slice(7);
-  const recordJson = await env.OIDC_KV.get(`token:${token}`);
-  if (!recordJson) {
+  const record = await verifyAccessToken(token, env.ADMIN_SECRET);
+  if (!record) {
     return Response.json({ error: 'invalid_token' }, { status: 401 });
   }
-
-  const record: TokenRecord = JSON.parse(recordJson);
 
   return Response.json({
     sub: record.sub,

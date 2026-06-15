@@ -1,5 +1,5 @@
 import { Env, OIDCClient, AuthCode } from '../types';
-import { getOrCreateKeyPair, createIdToken, generateRandomString, sha256, sha256Hex } from '../crypto';
+import { getOrCreateKeyPair, createIdToken, createAccessToken, computeAtHash, sha256, sha256Hex } from '../crypto';
 
 export async function handleToken(request: Request, env: Env): Promise<Response> {
   const contentType = request.headers.get('content-type') || '';
@@ -24,7 +24,6 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
     codeVerifier = body.code_verifier || '';
   }
 
-  // Support HTTP Basic auth for client credentials
   const authHeader = request.headers.get('Authorization') || '';
   if (authHeader.startsWith('Basic ')) {
     const decoded = atob(authHeader.slice(6));
@@ -37,7 +36,11 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
     return Response.json({ error: 'unsupported_grant_type' }, { status: 400 });
   }
 
-  const clientsJson = await env.OIDC_KV.get('config:clients');
+  const [clientsJson, authCodeJson] = await Promise.all([
+    env.OIDC_KV.get('config:clients'),
+    env.OIDC_KV.get(`code:${code}`),
+  ]);
+
   const clients: OIDCClient[] = clientsJson ? JSON.parse(clientsJson) : [];
   const client = clients.find(c => c.client_id === clientId);
 
@@ -45,7 +48,6 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
     return Response.json({ error: 'invalid_client' }, { status: 401 });
   }
 
-  // Verify client_secret if provided (not required when using PKCE)
   if (clientSecret) {
     const secretHash = await sha256Hex(clientSecret);
     if (secretHash !== client.client_secret_hash) {
@@ -53,7 +55,6 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
     }
   }
 
-  const authCodeJson = await env.OIDC_KV.get(`code:${code}`);
   if (!authCodeJson) {
     return Response.json({ error: 'invalid_grant', error_description: 'Code not found or expired' }, { status: 400 });
   }
@@ -73,7 +74,6 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
     return Response.json({ error: 'invalid_grant', error_description: 'Redirect URI mismatch' }, { status: 400 });
   }
 
-  // PKCE verification
   if (authCode.code_challenge) {
     if (!codeVerifier) {
       return Response.json({ error: 'invalid_grant', error_description: 'code_verifier required' }, { status: 400 });
@@ -82,18 +82,29 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
     if (computed !== authCode.code_challenge) {
       return Response.json({ error: 'invalid_grant', error_description: 'PKCE verification failed' }, { status: 400 });
     }
+  } else if (!clientSecret) {
+    return Response.json({ error: 'invalid_client', error_description: 'client_secret required when PKCE is not used' }, { status: 401 });
   }
 
-  // Mark code as used
   authCode.used = true;
   await env.OIDC_KV.put(`code:${code}`, JSON.stringify(authCode), { expirationTtl: 60 });
 
-  // Generate tokens
-  const accessToken = generateRandomString(48);
   const { privateKey } = await getOrCreateKeyPair(env.OIDC_KV);
 
   const userJson = await env.OIDC_KV.get(`user:${authCode.email}`);
   const user = userJson ? JSON.parse(userJson) : { sub: authCode.sub, email: authCode.email, name: authCode.email.split('@')[0], given_name: authCode.email.split('@')[0], family_name: authCode.email.split('@')[0] };
+
+  const accessToken = await createAccessToken(env.ADMIN_SECRET, {
+    sub: authCode.sub,
+    email: user.email,
+    name: user.name,
+    given_name: user.given_name,
+    family_name: user.family_name,
+    client_id: clientId,
+    scope: authCode.scope,
+  });
+
+  const atHash = await computeAtHash(accessToken);
 
   const idToken = await createIdToken(privateKey, {
     iss: env.ISSUER_URL,
@@ -104,17 +115,8 @@ export async function handleToken(request: Request, env: Env): Promise<Response>
     given_name: user.given_name,
     family_name: user.family_name,
     nonce: authCode.nonce,
+    at_hash: atHash,
   });
-
-  await env.OIDC_KV.put(`token:${accessToken}`, JSON.stringify({
-    sub: authCode.sub,
-    email: user.email,
-    name: user.name,
-    given_name: user.given_name,
-    family_name: user.family_name,
-    client_id: clientId,
-    scope: authCode.scope,
-  }), { expirationTtl: 3600 });
 
   return Response.json({
     access_token: accessToken,

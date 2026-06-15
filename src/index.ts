@@ -6,12 +6,18 @@ import { handleToken } from './oidc/token';
 import { handleUserinfo } from './oidc/userinfo';
 import { handleAdminApi } from './admin/api';
 
+function methodNotAllowed(): Response {
+  return Response.json(
+    { error: 'invalid_request', error_description: 'Method not allowed' },
+    { status: 405, headers: { Allow: 'POST' } },
+  );
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // CORS preflight for any path
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -26,26 +32,28 @@ export default {
     let response: Response;
 
     try {
-      // OIDC endpoints
       if (path === '/.well-known/openid-configuration') {
         response = handleDiscovery(env);
       } else if (path === '/jwks.json') {
-        response = await handleJwks(env);
+        response = await handleJwks(env, request);
       } else if (path === '/authorize') {
         response = request.method === 'POST'
           ? await handleAuthorizePost(request, env)
           : await handleAuthorizeGet(request, env);
-      } else if (path === '/token' && request.method === 'POST') {
-        response = await handleToken(request, env);
-      } else if (path === '/userinfo' && request.method === 'GET') {
-        response = await handleUserinfo(request, env);
-      }
-      // Admin API
-      else if (path.startsWith('/api/admin/')) {
+      } else if (path === '/token') {
+        response = request.method === 'POST'
+          ? await handleToken(request, env)
+          : methodNotAllowed();
+      } else if (path === '/userinfo') {
+        response = request.method === 'GET'
+          ? await handleUserinfo(request, env)
+          : Response.json(
+              { error: 'invalid_request', error_description: 'Method not allowed' },
+              { status: 405, headers: { Allow: 'GET' } },
+            );
+      } else if (path.startsWith('/api/admin/')) {
         response = await handleAdminApi(request, env, path);
-      }
-      // Everything else falls through to static assets
-      else {
+      } else {
         return env.ASSETS.fetch(request);
       }
     } catch (err) {
@@ -53,7 +61,6 @@ export default {
       response = Response.json({ error: message }, { status: 500 });
     }
 
-    // Add CORS headers to API responses
     if (path.startsWith('/api/')) {
       const headers = new Headers(response.headers);
       headers.set('Access-Control-Allow-Origin', '*');

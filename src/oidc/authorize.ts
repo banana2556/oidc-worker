@@ -1,32 +1,53 @@
-import { Env, OIDCClient, UserRecord, AuthCode, BrandingConfig, LoginCode } from '../types';
+import { Env, OIDCClient, UserRecord, AuthCode, BrandingConfig, LoginCode, SecuritySettings } from '../types';
 import { generateRandomString, sha256Hex } from '../crypto';
 import { getSecuritySettings, writeLog } from '../admin/api';
 
+const SUPPORTED_SCOPES = new Set(['openid', 'email', 'profile']);
+
+function validateScope(raw: string): string | null {
+  const parts = raw.split(' ').filter(Boolean);
+  if (!parts.includes('openid')) return null;
+  return parts.filter(s => SUPPORTED_SCOPES.has(s)).join(' ');
+}
+
 export async function handleAuthorizeGet(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+  const responseType = url.searchParams.get('response_type') || '';
   const clientId = url.searchParams.get('client_id') || '';
   const redirectUri = url.searchParams.get('redirect_uri') || '';
-  const scope = url.searchParams.get('scope') || 'openid';
+  const rawScope = url.searchParams.get('scope') || 'openid';
   const state = url.searchParams.get('state') || '';
   const nonce = url.searchParams.get('nonce') || '';
   const codeChallenge = url.searchParams.get('code_challenge') || '';
   const codeChallengeMethod = url.searchParams.get('code_challenge_method') || '';
   const loginHint = (url.searchParams.get('login_hint') || url.searchParams.get('email') || '').trim();
 
-  const clientsJson = await env.OIDC_KV.get('config:clients');
+  if (responseType !== 'code') {
+    return Response.json({ error: 'unsupported_response_type', error_description: 'Only response_type=code is supported' }, { status: 400 });
+  }
+
+  const scope = validateScope(rawScope);
+  if (!scope) {
+    return Response.json({ error: 'invalid_scope', error_description: 'scope must include openid' }, { status: 400 });
+  }
+
+  const [clientsJson, branding, security] = await Promise.all([
+    env.OIDC_KV.get('config:clients'),
+    getBranding(env),
+    getSecuritySettings(env),
+  ]);
+
   const clients: OIDCClient[] = clientsJson ? JSON.parse(clientsJson) : [];
   const client = clients.find(c => c.client_id === clientId);
 
   if (!client) {
-    return new Response('Invalid client_id', { status: 400 });
+    return Response.json({ error: 'invalid_request', error_description: 'Invalid client_id' }, { status: 400 });
   }
 
   if (!client.redirect_uris.includes(redirectUri)) {
-    return new Response('Invalid redirect_uri', { status: 400 });
+    return Response.json({ error: 'invalid_request', error_description: 'Invalid redirect_uri' }, { status: 400 });
   }
 
-  const branding = await getBranding(env);
-  const security = await getSecuritySettings(env);
   const html = renderLoginPage(
     branding,
     clientId,
@@ -58,30 +79,30 @@ export async function handleAuthorizePost(request: Request, env: Env): Promise<R
   const codeChallengeMethod = form.get('code_challenge_method') as string || '';
 
   if (!email || !email.includes('@')) {
-    return new Response('Invalid email', { status: 400 });
+    return Response.json({ error: 'invalid_request', error_description: 'Invalid email' }, { status: 400 });
   }
 
-  const security = await getSecuritySettings(env);
+  const [security, branding, domainsJson] = await Promise.all([
+    getSecuritySettings(env),
+    getBranding(env),
+    env.OIDC_KV.get('config:domains'),
+  ]);
   const turnstileSiteKey = security.turnstile_enabled ? env.TURNSTILE_SITE_KEY : undefined;
 
   if (!await verifyTurnstile(request, env, turnstileToken, security.turnstile_enabled)) {
-    const branding = await getBranding(env);
     const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, 'Human verification failed.', email, security.login_code_enabled, turnstileSiteKey);
     return new Response(html, { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
   const domain = email.split('@')[1];
-  const domainsJson = await env.OIDC_KV.get('config:domains');
   const domains: string[] = domainsJson ? JSON.parse(domainsJson) : [];
 
   if (!domains.includes(domain)) {
-    const branding = await getBranding(env);
     const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, `Domain "${domain}" is not allowed.`, email, security.login_code_enabled, turnstileSiteKey);
     return new Response(html, { status: 403, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
   if (security.login_code_enabled && !await consumeLoginCode(env, loginCode)) {
-    const branding = await getBranding(env);
     const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, 'Invalid email or verification code.', email, true, turnstileSiteKey);
     return new Response(html, { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
@@ -140,15 +161,15 @@ async function consumeLoginCode(env: Env, submittedCode: string): Promise<boolea
   const code = submittedCode.trim();
   if (!code) return false;
 
-  const raw = await env.OIDC_KV.get('config:login_codes');
-  const codes: LoginCode[] = raw ? JSON.parse(raw) : [];
   const codeHash = await sha256Hex(code);
-  const match = codes.find(item => item.code_hash === codeHash);
-  if (!match) return false;
+  const raw = await env.OIDC_KV.get(`logincode:${codeHash}`);
+  if (!raw) return false;
+
+  const match: LoginCode = JSON.parse(raw);
   if (match.max_uses !== null && match.used >= match.max_uses) return false;
 
   match.used += 1;
-  await env.OIDC_KV.put('config:login_codes', JSON.stringify(codes));
+  await env.OIDC_KV.put(`logincode:${codeHash}`, JSON.stringify(match));
   return true;
 }
 
@@ -199,21 +220,12 @@ function renderLoginPage(
   const mBgR = parseInt(modernBgHex.slice(1, 3), 16) || 30;
   const mBgG = parseInt(modernBgHex.slice(3, 5), 16) || 26;
   const mBgB = parseInt(modernBgHex.slice(5, 7), 16) || 21;
-  const mBtnR = parseInt(modernBtnColor.slice(1, 3), 16) || 138;
-  const mBtnG = parseInt(modernBtnColor.slice(3, 5), 16) || 107;
-  const mBtnB = parseInt(modernBtnColor.slice(5, 7), 16) || 82;
   const minBw = mis.border_width != null ? Number(mis.border_width) : 1;
   const minBr = mis.border_radius != null ? Number(mis.border_radius) : 8;
   const minBtnR = Math.max(minBr - 2, 4);
   const minBtnHex = (mis.btn_color as string) || '#111111';
-  const minBR = parseInt(minBtnHex.slice(1, 3), 16) || 17;
-  const minBG = parseInt(minBtnHex.slice(3, 5), 16) || 17;
-  const minBB = parseInt(minBtnHex.slice(5, 7), 16) || 17;
   const minBgColor = (mis.bg_color as string) || '#ffffff';
   const glassBtnHex = (gs.btn_color as string) || '#ffffff';
-  const gR = parseInt(glassBtnHex.slice(1, 3), 16) || 255;
-  const gG = parseInt(glassBtnHex.slice(3, 5), 16) || 255;
-  const gB = parseInt(glassBtnHex.slice(5, 7), 16) || 255;
   const activeSettings = (branding.theme === 'modern' ? ms : branding.theme === 'minimal' ? mis : gs);
   const themeColorAuto = activeSettings.theme_color_auto === true;
   const fallbackThemeColor = normalizeHexColor(
