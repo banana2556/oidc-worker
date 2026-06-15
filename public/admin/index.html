@@ -43,11 +43,11 @@ async function login() {
     const data = await res.json();
     if (!res.ok) { errEl.textContent = data.error || t('login_error'); errEl.style.display = 'block'; return; }
     localStorage.setItem('admin_token', data.token);
-    window.location.href = '/admin/domains.html';
+    window.location.href = '/admin/clients.html';
   } catch (e) { errEl.textContent = 'Connection error'; errEl.style.display = 'block'; }
 }
 
-if (localStorage.getItem('admin_token')) window.location.href = '/admin/domains.html';
+if (localStorage.getItem('admin_token')) window.location.href = '/admin/clients.html';
 </script>
 </body>
 </html>

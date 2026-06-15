@@ -56,7 +56,28 @@ const token = localStorage.getItem('admin_token');
 if (!token) window.location.href = '/admin/index.html';
 const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
-renderSidebar('login-codes');
+async function initPage() {
+  const secRes = await fetch(`${API}/security`, { headers });
+  const secData = secRes.ok ? await secRes.json() : {};
+  const loginCodeEnabled = secData.security ? secData.security.login_code_enabled : true;
+  renderSidebar('login-codes', { loginCodeEnabled });
+
+  if (!loginCodeEnabled) {
+    document.getElementById('pageTitle').textContent = t('login_codes_title');
+    document.querySelector('.main').innerHTML = `
+      <h1>${t('login_codes_title')}</h1>
+      <div class="card" style="text-align:center;padding:48px">
+        <p style="color:var(--text-muted);font-size:15px;margin-bottom:16px">${t('nav_login_codes_disabled')}</p>
+        <a href="/admin/branding.html" class="btn btn-primary">${t('nav_branding')}</a>
+      </div>`;
+    return;
+  }
+
+  setupPage();
+}
+
+function setupPage() {
+renderSidebar('login-codes', { loginCodeEnabled: true });
 document.getElementById('pageTitle').textContent = t('login_codes_title');
 document.getElementById('createTitle').textContent = t('login_codes_create_title');
 document.getElementById('lCode').textContent = t('login_codes_code_label');
@@ -155,9 +176,12 @@ function copyCode(text) {
 
 document.getElementById('newCode').addEventListener('keydown', e => { if (e.key === 'Enter') addCode(); });
 document.getElementById('maxUses').addEventListener('keydown', e => { if (e.key === 'Enter') addCode(); });
+loadCodes();
+} // end setupPage
+
 function esc(s) { const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 function attr(s) { return esc(s).replace(/"/g, '&quot;'); }
-loadCodes();
+initPage();
 </script>
 </body>
 </html>

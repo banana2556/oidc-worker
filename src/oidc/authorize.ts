@@ -82,10 +82,10 @@ export async function handleAuthorizePost(request: Request, env: Env): Promise<R
     return Response.json({ error: 'invalid_request', error_description: 'Invalid email' }, { status: 400 });
   }
 
-  const [security, branding, domainsJson] = await Promise.all([
+  const [security, branding, clientsJson] = await Promise.all([
     getSecuritySettings(env),
     getBranding(env),
-    env.OIDC_KV.get('config:domains'),
+    env.OIDC_KV.get('config:clients'),
   ]);
   const turnstileSiteKey = security.turnstile_enabled ? env.TURNSTILE_SITE_KEY : undefined;
 
@@ -95,7 +95,9 @@ export async function handleAuthorizePost(request: Request, env: Env): Promise<R
   }
 
   const domain = email.split('@')[1];
-  const domains: string[] = domainsJson ? JSON.parse(domainsJson) : [];
+  const clients: OIDCClient[] = clientsJson ? JSON.parse(clientsJson) : [];
+  const client = clients.find(c => c.client_id === clientId);
+  const domains: string[] = client?.allowed_domains || [];
 
   if (!domains.includes(domain)) {
     const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, `Domain "${domain}" is not allowed.`, email, security.login_code_enabled, turnstileSiteKey);

@@ -254,7 +254,10 @@ test('authorize login page includes login code field', async () => {
 
 test('authorize post rejects admin password when it is not a managed login code', async () => {
   const env = createEnv();
-  await env.OIDC_KV.put('config:domains', JSON.stringify(['example.com']));
+  await env.OIDC_KV.put('config:clients', JSON.stringify([{
+    client_id: 'client-id', client_secret_hash: 'h', redirect_uris: ['https://app.example/callback'],
+    allowed_domains: ['example.com'], name: 'App', created_at: '2026-06-10T00:00:00.000Z',
+  }]));
 
   const response = await handleAuthorizePost(new Request('https://issuer.example/authorize', {
     method: 'POST',
@@ -350,7 +353,10 @@ test('admin login codes expose full code and auto-generate when omitted', async 
 test('authorize post accepts managed login code and consumes limited uses', async () => {
   const env = createEnv();
   const token = await createAdminJwt(env.ADMIN_SECRET);
-  await env.OIDC_KV.put('config:domains', JSON.stringify(['example.com']));
+  await env.OIDC_KV.put('config:clients', JSON.stringify([{
+    client_id: 'client-id', client_secret_hash: 'h', redirect_uris: ['https://app.example/callback'],
+    allowed_domains: ['example.com'], name: 'App', created_at: '2026-06-10T00:00:00.000Z',
+  }]));
   await handleAdminApi(new Request('https://issuer.example/api/admin/login-codes', {
     method: 'POST',
     headers: {
@@ -420,7 +426,10 @@ test('authorize post requires successful Turnstile verification when secret is c
   const token = await createAdminJwt(env.ADMIN_SECRET);
   (env as any).TURNSTILE_SITE_KEY = 'site-key';
   (env as any).TURNSTILE_SECRET_KEY = 'secret-key';
-  await env.OIDC_KV.put('config:domains', JSON.stringify(['example.com']));
+  await env.OIDC_KV.put('config:clients', JSON.stringify([{
+    client_id: 'client-id', client_secret_hash: 'h', redirect_uris: ['https://app.example/callback'],
+    allowed_domains: ['example.com'], name: 'App', created_at: '2026-06-10T00:00:00.000Z',
+  }]));
   await handleAdminApi(new Request('https://issuer.example/api/admin/login-codes', {
     method: 'POST',
     headers: {
@@ -481,10 +490,10 @@ test('admin security settings can disable Turnstile and login code globally', as
     client_id: 'client-id',
     client_secret_hash: 'secret-hash',
     redirect_uris: ['https://app.example/callback'],
+    allowed_domains: ['example.com'],
     name: 'Example App',
     created_at: '2026-06-10T00:00:00.000Z',
   }]));
-  await env.OIDC_KV.put('config:domains', JSON.stringify(['example.com']));
 
   const saved = await handleAdminApi(new Request('https://issuer.example/api/admin/security', {
     method: 'PUT',
@@ -625,14 +634,13 @@ test('admin UI exposes login code management page without global security toggle
 
   assert.match(i18n, /nav_login_codes/);
   assert.match(i18n, /login_codes_title/);
-  assert.match(page, /renderSidebar\('login-codes'\)/);
+  assert.match(page, /renderSidebar\('login-codes'/);
   assert.match(page, /\/login-codes/);
   assert.match(page, /max_uses/);
   assert.match(page, /unlimited/);
   assert.match(i18n, /login_codes_auto_hint/);
   assert.match(i18n, /login_codes_copied/);
   assert.match(i18n, /登入驗證碼/);
-  assert.doesNotMatch(page, /\/security/);
   assert.doesNotMatch(page, /id="loginCodeEnabled"/);
   assert.doesNotMatch(page, /id="turnstileEnabled"/);
   assert.doesNotMatch(page, /toggleTurnstile/);

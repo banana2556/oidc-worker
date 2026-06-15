@@ -212,6 +212,8 @@ function applySecurityState(security) {
 function loadSecurity() {
   api('/security').then(function(data) {
     applySecurityState(data && data.security);
+    var enabled = data && data.security ? data.security.login_code_enabled !== false : true;
+    renderSidebar('branding', { loginCodeEnabled: enabled });
   });
 }
 
@@ -229,6 +231,8 @@ function saveSecurity() {
     }),
   }).then(function(data) {
     applySecurityState(data && data.security);
+    var enabled = data && data.security ? data.security.login_code_enabled !== false : true;
+    renderSidebar('branding', { loginCodeEnabled: enabled });
     toast(t('login_codes_security_saved'));
   });
 }

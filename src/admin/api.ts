@@ -165,32 +165,6 @@ export async function handleAdminApi(request: Request, env: Env, path: string): 
     }
   }
 
-  // --- Domains ---
-  if (path === '/api/admin/domains') {
-    if (request.method === 'GET') {
-      const raw = await env.OIDC_KV.get('config:domains');
-      return Response.json({ domains: raw ? JSON.parse(raw) : [] });
-    }
-    if (request.method === 'POST') {
-      const { domain } = await request.json() as { domain: string };
-      const d = domain.toLowerCase().trim();
-      if (!d) return Response.json({ error: 'Domain required' }, { status: 400 });
-      const raw = await env.OIDC_KV.get('config:domains');
-      const domains: string[] = raw ? JSON.parse(raw) : [];
-      if (!domains.includes(d)) domains.push(d);
-      await env.OIDC_KV.put('config:domains', JSON.stringify(domains));
-      return Response.json({ domains });
-    }
-    if (request.method === 'DELETE') {
-      const { domain } = await request.json() as { domain: string };
-      const raw = await env.OIDC_KV.get('config:domains');
-      let domains: string[] = raw ? JSON.parse(raw) : [];
-      domains = domains.filter(d => d !== domain);
-      await env.OIDC_KV.put('config:domains', JSON.stringify(domains));
-      return Response.json({ domains });
-    }
-  }
-
   // --- Users ---
   if (path === '/api/admin/users') {
     if (request.method === 'GET') {
@@ -210,12 +184,11 @@ export async function handleAdminApi(request: Request, env: Env, path: string): 
   // --- Clients ---
   if (path === '/api/admin/clients') {
     if (request.method === 'GET') {
-      const raw = await env.OIDC_KV.get('config:clients');
-      const clients: OIDCClient[] = raw ? JSON.parse(raw) : [];
+      const clients = await getClientsWithDomainMigration(env);
       return Response.json({ clients: clients.map(c => ({ ...c, client_secret_hash: '***' })) });
     }
     if (request.method === 'POST') {
-      const { name, redirect_uris } = await request.json() as { name: string; redirect_uris: string[] };
+      const { name, redirect_uris, allowed_domains } = await request.json() as { name: string; redirect_uris: string[]; allowed_domains?: string[] };
       const clientId = generateRandomString(16);
       const clientSecret = generateRandomString(32);
       const secretHash = await sha256Hex(clientSecret);
@@ -223,32 +196,31 @@ export async function handleAdminApi(request: Request, env: Env, path: string): 
         client_id: clientId,
         client_secret_hash: secretHash,
         redirect_uris: redirect_uris || [],
+        allowed_domains: normalizeDomains(allowed_domains || []),
         name: name || 'Unnamed',
         created_at: new Date().toISOString(),
       };
-      const raw = await env.OIDC_KV.get('config:clients');
-      const clients: OIDCClient[] = raw ? JSON.parse(raw) : [];
+      const clients = await getClientsWithDomainMigration(env);
       clients.push(newClient);
       await env.OIDC_KV.put('config:clients', JSON.stringify(clients));
-      return Response.json({ client_id: clientId, client_secret: clientSecret, name: newClient.name, redirect_uris: newClient.redirect_uris });
+      return Response.json({ client_id: clientId, client_secret: clientSecret, name: newClient.name, redirect_uris: newClient.redirect_uris, allowed_domains: newClient.allowed_domains });
     }
     if (request.method === 'PUT') {
-      const { client_id, name, redirect_uris } = await request.json() as { client_id: string; name?: string; redirect_uris?: string[] };
-      const raw = await env.OIDC_KV.get('config:clients');
-      const clients: OIDCClient[] = raw ? JSON.parse(raw) : [];
+      const { client_id, name, redirect_uris, allowed_domains } = await request.json() as { client_id: string; name?: string; redirect_uris?: string[]; allowed_domains?: string[] };
+      const clients = await getClientsWithDomainMigration(env);
       const idx = clients.findIndex(c => c.client_id === client_id);
       if (idx === -1) return Response.json({ error: 'Client not found' }, { status: 404 });
       if (name) clients[idx].name = name;
       if (redirect_uris) clients[idx].redirect_uris = redirect_uris;
+      if (allowed_domains !== undefined) clients[idx].allowed_domains = normalizeDomains(allowed_domains);
       await env.OIDC_KV.put('config:clients', JSON.stringify(clients));
       return Response.json({ ok: true });
     }
     if (request.method === 'DELETE') {
       const { client_id } = await request.json() as { client_id: string };
-      const raw = await env.OIDC_KV.get('config:clients');
-      let clients: OIDCClient[] = raw ? JSON.parse(raw) : [];
-      clients = clients.filter(c => c.client_id !== client_id);
-      await env.OIDC_KV.put('config:clients', JSON.stringify(clients));
+      const clients = await getClientsWithDomainMigration(env);
+      const filtered = clients.filter(c => c.client_id !== client_id);
+      await env.OIDC_KV.put('config:clients', JSON.stringify(filtered));
       return Response.json({ ok: true });
     }
   }
@@ -387,6 +359,28 @@ function normalizeExternalLinks(value: unknown): BrandingConfig['external_links'
     })
     .filter((item) => item.name && item.url)
     .slice(0, 1);
+}
+
+function normalizeDomains(domains: string[]): string[] {
+  return [...new Set(domains.map(d => d.toLowerCase().trim()).filter(Boolean))];
+}
+
+async function getClientsWithDomainMigration(env: Env): Promise<OIDCClient[]> {
+  const raw = await env.OIDC_KV.get('config:clients');
+  const clients: OIDCClient[] = raw ? JSON.parse(raw) : [];
+
+  const needsMigration = clients.some(c => !c.allowed_domains);
+  if (!needsMigration) return clients;
+
+  const legacyRaw = await env.OIDC_KV.get('config:domains');
+  const legacyDomains: string[] = legacyRaw ? JSON.parse(legacyRaw) : [];
+
+  for (const c of clients) {
+    if (!c.allowed_domains) c.allowed_domains = [...legacyDomains];
+  }
+  await env.OIDC_KV.put('config:clients', JSON.stringify(clients));
+  if (legacyRaw) await env.OIDC_KV.delete('config:domains');
+  return clients;
 }
 
 async function proxyAdminThemeImage(request: Request): Promise<Response> {

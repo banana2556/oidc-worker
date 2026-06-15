@@ -1,14 +1,14 @@
 const LANG = {
   en: {
     // Sidebar
-    sidebar_title: 'OIDC IdP',
-    nav_domains: 'Domains',
+    sidebar_title: 'CF OIDC',
     nav_users: 'Users',
     nav_clients: 'Clients',
-    nav_branding: 'Branding',
+    nav_branding: 'Login Page',
     nav_login_codes: 'Login Codes',
     nav_logs: 'Logs',
     nav_logout: 'Logout',
+    nav_login_codes_disabled: 'Enable login codes in Login Page settings first.',
     // Login page
     login_title: 'OIDC Admin',
     login_subtitle: 'Enter admin password to continue',
@@ -16,19 +16,10 @@ const LANG = {
     login_password_placeholder: 'Admin password',
     login_btn: 'Sign In',
     login_error: 'Login failed',
-    // Domains
-    domains_title: 'Allowed Domains',
-    domains_placeholder: 'example.com',
-    domains_add: 'Add Domain',
-    domains_th_domain: 'Domain',
-    domains_th_actions: 'Actions',
-    domains_empty: 'No domains configured. Add a domain to allow user registration.',
-    domains_confirm: 'Remove domain',
-    domains_added: 'Domain added',
-    domains_removed: 'Domain removed',
     // Users
     users_title: 'Registered Users',
     users_th_email: 'Email',
+    users_th_domain: 'Domain',
     users_th_sub: 'Sub (ID)',
     users_th_created: 'Created',
     users_th_last_login: 'Last Login',
@@ -59,6 +50,11 @@ const LANG = {
     clients_confirm: 'Delete this client?',
     clients_deleted: 'Client deleted',
     clients_copied: 'Copied!',
+    clients_th_domains: 'Allowed Domains',
+    clients_domains_label: 'Allowed Email Domains (one per line)',
+    clients_domains_placeholder: 'example.com',
+    clients_domains_empty: 'No domains — all emails blocked',
+    clients_domains_saved: 'Domains updated',
     // Login codes
     login_codes_title: 'Login Verification Codes',
     login_codes_create_title: 'Create Login Code',
@@ -151,31 +147,23 @@ const LANG = {
     delete_btn: 'Delete',
   },
   zh: {
-    sidebar_title: 'OIDC IdP',
-    nav_domains: '域名管理',
+    sidebar_title: 'CF OIDC',
     nav_users: '用戶管理',
     nav_clients: '用戶端管理',
-    nav_branding: '外觀設定',
+    nav_branding: '登入頁設定',
     nav_login_codes: '登入驗證碼',
     nav_logs: '操作日誌',
     nav_logout: '登出',
+    nav_login_codes_disabled: '請先在「登入頁設定」開啟登入驗證碼。',
     login_title: 'OIDC 管理後台',
     login_subtitle: '請輸入管理員密碼',
     login_password_label: '密碼',
     login_password_placeholder: '管理員密碼',
     login_btn: '登入',
     login_error: '登入失敗',
-    domains_title: '允許的域名',
-    domains_placeholder: 'example.com',
-    domains_add: '新增域名',
-    domains_th_domain: '域名',
-    domains_th_actions: '操作',
-    domains_empty: '尚未設定任何域名，請新增域名以允許用戶註冊。',
-    domains_confirm: '確定要移除域名',
-    domains_added: '域名已新增',
-    domains_removed: '域名已移除',
     users_title: '已註冊用戶',
     users_th_email: '信箱',
+    users_th_domain: '域名',
     users_th_sub: '用戶 ID',
     users_th_created: '建立時間',
     users_th_last_login: '最後登入',
@@ -205,6 +193,11 @@ const LANG = {
     clients_confirm: '確定要刪除此用戶端？',
     clients_deleted: '用戶端已刪除',
     clients_copied: '已複製！',
+    clients_th_domains: '允許域名',
+    clients_domains_label: '允許的信箱域名（每行一個）',
+    clients_domains_placeholder: 'example.com',
+    clients_domains_empty: '未設定域名 — 所有信箱均無法登入',
+    clients_domains_saved: '域名已更新',
     login_codes_title: '登入驗證碼',
     login_codes_create_title: '建立登入驗證碼',
     login_codes_code_label: '驗證碼',
@@ -316,16 +309,18 @@ function renderLangSwitch() {
   if (sidebar) sidebar.appendChild(btn);
 }
 
-function renderSidebar(active) {
-  const sidebar = document.querySelector('.sidebar');
+function renderSidebar(active, opts) {
+  var loginCodeEnabled = opts && opts.loginCodeEnabled !== undefined ? opts.loginCodeEnabled : true;
+  var sidebar = document.querySelector('.sidebar');
   if (!sidebar) return;
+  var lcClass = loginCodeEnabled ? '' : ' disabled';
+  var lcClick = loginCodeEnabled ? '' : ' onclick="event.preventDefault();alert(t(\'nav_login_codes_disabled\'))"';
   sidebar.innerHTML = `
-    <h2>${t('sidebar_title')}</h2>
-    <a href="/admin/domains.html" ${active==='domains'?'class="active"':''}>${t('nav_domains')}</a>
-    <a href="/admin/users.html" ${active==='users'?'class="active"':''}>${t('nav_users')}</a>
+    <h2><a href="https://github.com/banana2556/oidc-worker" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none">${t('sidebar_title')}</a></h2>
     <a href="/admin/clients.html" ${active==='clients'?'class="active"':''}>${t('nav_clients')}</a>
+    <a href="/admin/users.html" ${active==='users'?'class="active"':''}>${t('nav_users')}</a>
     <a href="/admin/branding.html" ${active==='branding'?'class="active"':''}>${t('nav_branding')}</a>
-    <a href="/admin/login-codes.html" ${active==='login-codes'?'class="active"':''}>${t('nav_login_codes')}</a>
+    <a href="/admin/login-codes.html" class="${active==='login-codes'?'active':''}${lcClass}"${lcClick}>${t('nav_login_codes')}</a>
     <a href="/admin/logs.html" ${active==='logs'?'class="active"':''}>${t('nav_logs')}</a>
     <a href="#" onclick="logout()" style="color:rgba(255,200,200,0.9)">${t('nav_logout')}</a>
   `;

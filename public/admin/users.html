@@ -12,7 +12,7 @@
     <h1 id="pageTitle"></h1>
     <div class="card">
       <table>
-        <thead><tr><th id="thEmail"></th><th id="thSub"></th><th id="thCreated"></th><th id="thLogin"></th><th style="width:80px" id="thActions"></th></tr></thead>
+        <thead><tr><th id="thEmail"></th><th id="thDomain"></th><th id="thSub"></th><th id="thCreated"></th><th id="thLogin"></th><th style="width:80px" id="thActions"></th></tr></thead>
         <tbody id="userList"></tbody>
       </table>
       <div id="empty" class="empty" style="display:none"></div>
@@ -29,6 +29,7 @@ const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer $
 renderSidebar('users');
 document.getElementById('pageTitle').textContent = t('users_title');
 document.getElementById('thEmail').textContent = t('users_th_email');
+document.getElementById('thDomain').textContent = t('users_th_domain');
 document.getElementById('thSub').textContent = t('users_th_sub');
 document.getElementById('thCreated').textContent = t('users_th_created');
 document.getElementById('thLogin').textContent = t('users_th_last_login');
@@ -55,6 +56,7 @@ async function loadUsers() {
   list.innerHTML = data.users.map(u => `
     <tr>
       <td>${esc(u.email)}</td>
+      <td style="font-size:13px;color:var(--secondary);font-weight:500">${esc((u.email || '').split('@')[1] || '-')}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--text-muted);word-break:break-all">${esc(u.sub)}</td>
       <td style="font-size:13px;color:var(--text-muted)">${fmtDate(u.created_at)}</td>
       <td style="font-size:13px;color:var(--text-muted)">${fmtDate(u.last_login)}</td>

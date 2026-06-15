@@ -11,6 +11,11 @@
 .copiable{display:inline-flex;align-items:center;gap:6px}
 .copiable .copy-inline{background:none;border:none;cursor:pointer;color:var(--text-muted);padding:2px;transition:color .15s;flex-shrink:0}
 .copiable .copy-inline:hover{color:var(--primary)}
+.domain-list{display:flex;flex-wrap:wrap;gap:4px;margin:0}
+.domain-tag{display:inline-flex;align-items:center;gap:4px;background:rgba(118,141,106,0.1);border:1px solid rgba(118,141,106,0.25);border-radius:6px;padding:2px 8px;font-size:12px;color:var(--secondary);font-weight:500}
+.domain-edit{margin-top:8px}
+.domain-edit textarea{font-family:monospace;font-size:13px;min-height:60px}
+.domain-edit-actions{display:flex;gap:8px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -27,6 +32,10 @@
       <div class="form-group">
         <label for="redirectUris" id="lUris"></label>
         <textarea id="redirectUris" rows="3" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:14px;width:100%;outline:none;resize:vertical;font-family:monospace"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="allowedDomains" id="lDomains"></label>
+        <textarea id="allowedDomains" rows="2" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:14px;width:100%;outline:none;resize:vertical;font-family:monospace"></textarea>
       </div>
       <button class="btn btn-primary" onclick="createClient()" id="createBtn"></button>
     </div>
@@ -53,10 +62,12 @@
 
     <div class="card">
       <h3 style="font-size:15px;margin-bottom:16px" id="registeredTitle"></h3>
-      <table>
-        <thead><tr><th id="thName"></th><th id="thId"></th><th id="thUris"></th><th id="thCreated"></th><th style="width:80px" id="thActions"></th></tr></thead>
-        <tbody id="clientList"></tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th id="thName"></th><th id="thId"></th><th id="thDomains"></th><th id="thUris"></th><th id="thCreated"></th><th style="width:80px" id="thActions"></th></tr></thead>
+          <tbody id="clientList"></tbody>
+        </table>
+      </div>
       <div id="empty" class="empty" style="display:none"></div>
     </div>
   </div>
@@ -74,6 +85,8 @@ document.getElementById('createTitle').textContent = t('clients_create_title');
 document.getElementById('lName').textContent = t('clients_name_label');
 document.getElementById('clientName').placeholder = t('clients_name_placeholder');
 document.getElementById('lUris').textContent = t('clients_uris_label');
+document.getElementById('lDomains').textContent = t('clients_domains_label');
+document.getElementById('allowedDomains').placeholder = t('clients_domains_placeholder');
 document.getElementById('createBtn').textContent = t('clients_create_btn');
 document.getElementById('successTitle').textContent = t('clients_success_title');
 document.getElementById('successDesc').textContent = t('clients_success_desc');
@@ -83,6 +96,7 @@ document.getElementById('dismissBtn').textContent = t('clients_dismiss');
 document.getElementById('registeredTitle').textContent = t('clients_registered');
 document.getElementById('thName').textContent = t('clients_th_name');
 document.getElementById('thId').textContent = t('clients_th_id');
+document.getElementById('thDomains').textContent = t('clients_th_domains');
 document.getElementById('thUris').textContent = t('clients_th_uris');
 document.getElementById('thCreated').textContent = t('clients_th_created');
 document.getElementById('thActions').textContent = t('clients_th_actions');
@@ -99,6 +113,11 @@ async function api(path, opts = {}) {
 
 function fmtDate(s) { if (!s) return '-'; return new Date(s).toLocaleDateString(); }
 
+function renderDomains(domains, clientId) {
+  if (!domains || !domains.length) return `<span style="color:var(--text-muted);font-size:12px">${esc(t('clients_domains_empty'))}</span>`;
+  return `<div class="domain-list">${domains.map(d => `<span class="domain-tag">${esc(d)}</span>`).join('')}</div>`;
+}
+
 async function loadClients() {
   const data = await api('/clients');
   const list = document.getElementById('clientList');
@@ -109,6 +128,16 @@ async function loadClients() {
     <tr>
       <td>${esc(c.name)}</td>
       <td><span class="copiable"><code style="font-size:12px;word-break:break-all">${esc(c.client_id)}</code><button class="copy-inline" onclick="event.stopPropagation();copyRaw('${esc(c.client_id)}')" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></span></td>
+      <td>${renderDomains(c.allowed_domains, c.client_id)}
+        <div class="domain-edit" id="de-${esc(c.client_id)}" style="display:none">
+          <textarea id="dt-${esc(c.client_id)}" rows="3" style="font-family:monospace;font-size:12px;min-height:50px">${(c.allowed_domains||[]).join('\n')}</textarea>
+          <div class="domain-edit-actions">
+            <button class="btn btn-primary btn-sm" onclick="saveDomains('${esc(c.client_id)}')">${t('branding_save')}</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('de-${esc(c.client_id)}').style.display='none'">✕</button>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px;font-size:11px" onclick="document.getElementById('de-${esc(c.client_id)}').style.display='block'">✎</button>
+      </td>
       <td style="font-size:12px;font-family:monospace;word-break:break-all">${c.redirect_uris.map(u => esc(u)).join('<br>')}</td>
       <td style="font-size:13px;color:var(--text-muted)">${fmtDate(c.created_at)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="delClient('${esc(c.client_id)}')">${t('delete_btn')}</button></td>
@@ -119,13 +148,23 @@ async function loadClients() {
 async function createClient() {
   const name = document.getElementById('clientName').value.trim();
   const uris = document.getElementById('redirectUris').value.trim().split('\n').map(s => s.trim()).filter(Boolean);
+  const domains = document.getElementById('allowedDomains').value.trim().split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
   if (!name) { toast(t('clients_name_required')); return; }
-  const data = await api('/clients', { method: 'POST', body: JSON.stringify({ name, redirect_uris: uris }) });
+  const data = await api('/clients', { method: 'POST', body: JSON.stringify({ name, redirect_uris: uris, allowed_domains: domains }) });
   document.getElementById('newClientId').textContent = data.client_id;
   document.getElementById('newClientSecret').textContent = data.client_secret;
   document.getElementById('newClientInfo').style.display = 'block';
   document.getElementById('clientName').value = '';
   document.getElementById('redirectUris').value = '';
+  document.getElementById('allowedDomains').value = '';
+  loadClients();
+}
+
+async function saveDomains(clientId) {
+  const textarea = document.getElementById('dt-' + clientId);
+  const domains = textarea.value.trim().split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
+  await api('/clients', { method: 'PUT', body: JSON.stringify({ client_id: clientId, allowed_domains: domains }) });
+  toast(t('clients_domains_saved'));
   loadClients();
 }
 

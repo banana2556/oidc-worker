@@ -12,6 +12,7 @@ export interface OIDCClient {
   client_id: string;
   client_secret_hash: string;
   redirect_uris: string[];
+  allowed_domains: string[];
   name: string;
   created_at: string;
 }
