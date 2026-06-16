@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OIDC Admin - Clients</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/assets/admin.css">
 <style>
 .copy-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:6px;cursor:pointer;color:var(--text-muted);transition:all .15s;flex-shrink:0}
@@ -26,17 +26,19 @@
     <h1 id="pageTitle"></h1>
     <div class="card">
       <h3 style="font-size:15px;margin-bottom:16px" id="createTitle"></h3>
-      <div class="form-group">
-        <label for="clientName" id="lName"></label>
-        <input type="text" id="clientName">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="clientName" id="lName"></label>
+          <input type="text" id="clientName">
+        </div>
+        <div class="form-group">
+          <label for="allowedDomains" id="lDomains"></label>
+          <textarea id="allowedDomains" rows="1" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:14px;width:100%;outline:none;resize:vertical;font-family:monospace"></textarea>
+        </div>
       </div>
       <div class="form-group">
-        <label for="redirectUris" id="lUris"></label>
-        <textarea id="redirectUris" rows="3" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:14px;width:100%;outline:none;resize:vertical;font-family:monospace"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="allowedDomains" id="lDomains"></label>
-        <textarea id="allowedDomains" rows="2" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:14px;width:100%;outline:none;resize:vertical;font-family:monospace"></textarea>
+        <label for="redirectUri" id="lUris"></label>
+        <input type="url" id="redirectUri">
       </div>
       <button class="btn btn-primary" onclick="createClient()" id="createBtn"></button>
     </div>
@@ -70,6 +72,7 @@
         </table>
       </div>
       <div id="empty" class="empty" style="display:none"></div>
+      <div id="pagination"></div>
     </div>
   </div>
 </div>
@@ -119,13 +122,13 @@ function renderDomains(domains, clientId) {
   return `<div class="domain-list">${domains.map(d => `<span class="domain-tag">${esc(d)}</span>`).join('')}</div>`;
 }
 
-async function loadClients() {
-  const data = await api('/clients');
+let allClients = [];
+const pager = createPager('clients', 'pagination', function(clients, total) {
   const list = document.getElementById('clientList');
   const empty = document.getElementById('empty');
-  if (!data.clients.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  if (total === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-  list.innerHTML = data.clients.map(c => `
+  list.innerHTML = clients.map(c => `
     <tr>
       <td>${esc(c.name)}</td>
       <td><span class="copiable"><code style="font-size:12px;word-break:break-all">${esc(c.client_id)}</code><button class="copy-inline" onclick="event.stopPropagation();copyRaw('${esc(c.client_id)}')" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></span></td>
@@ -139,24 +142,31 @@ async function loadClients() {
         </div>
         <button class="btn btn-outline btn-sm" style="margin-top:6px;font-size:11px" onclick="document.getElementById('de-${esc(c.client_id)}').style.display='block'">✎</button>
       </td>
-      <td style="font-size:12px;font-family:monospace;word-break:break-all">${c.redirect_uris.map(u => esc(u)).join('<br>')}</td>
+      <td style="font-size:12px;font-family:monospace;word-break:break-all">${esc((c.redirect_uris || [])[0] || '-')}</td>
       <td style="font-size:13px;color:var(--text-muted)">${fmtDate(c.created_at)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="delClient('${esc(c.client_id)}')">${t('delete_btn')}</button></td>
     </tr>
   `).join('');
+}, 'auto');
+
+async function loadClients() {
+  const data = await api('/clients');
+  allClients = data.clients || [];
+  pager.setData(allClients);
 }
 
 async function createClient() {
   const name = document.getElementById('clientName').value.trim();
-  const uris = document.getElementById('redirectUris').value.trim().split('\n').map(s => s.trim()).filter(Boolean);
+  const uri = document.getElementById('redirectUri').value.trim();
   const domains = document.getElementById('allowedDomains').value.trim().split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
   if (!name) { toast(t('clients_name_required')); return; }
-  const data = await api('/clients', { method: 'POST', body: JSON.stringify({ name, redirect_uris: uris, allowed_domains: domains }) });
+  const redirect_uris = uri ? [uri] : [];
+  const data = await api('/clients', { method: 'POST', body: JSON.stringify({ name, redirect_uris, allowed_domains: domains }) });
   document.getElementById('newClientId').textContent = data.client_id;
   document.getElementById('newClientSecret').textContent = data.client_secret;
   document.getElementById('newClientInfo').style.display = 'block';
   document.getElementById('clientName').value = '';
-  document.getElementById('redirectUris').value = '';
+  document.getElementById('redirectUri').value = '';
   document.getElementById('allowedDomains').value = '';
   loadClients();
 }

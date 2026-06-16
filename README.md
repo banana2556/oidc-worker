@@ -2,6 +2,19 @@
 
 Cloudflare Workers 上的輕量 OIDC Identity Provider，內建 Admin UI、Allowed Domains、OIDC Clients、登入驗證碼、Turnstile、Login page branding 與活動記錄。
 
+## 功能特色
+
+- **OIDC Authorization Code Flow + PKCE (S256)** — 標準 OIDC 流程，支援 ChatGPT 等第三方整合
+- **JWT Access Token (HS256)** — 無需額外 KV 查詢即可驗證
+- **多語系 (i18n)** — 英文、繁體中文、簡體中文，Admin UI 與登入頁皆支援
+- **用戶端管理** — 每個 Client 獨立設定 Redirect URI 與允許的信箱域名
+- **登入頁主題** — Glass / Modern / Minimal 三種主題，支援背景圖片輪換與自訂品牌
+- **登入驗證碼** — 可設定使用次數限制的一次性驗證碼
+- **Cloudflare Turnstile** — 選配的人機驗證
+- **操作日誌** — 記錄所有授權與管理操作
+- **自動分頁** — 表格依視窗高度自動分頁，不產生頁面滾動
+- **一鍵部署** — 支援 Cloudflare Deploy Button
+
 ## 一鍵部署到 Cloudflare
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/grape2556/oidc-worker)

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OIDC Admin - Users</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/assets/admin.css">
 </head>
 <body>
@@ -17,6 +17,7 @@
         <tbody id="userList"></tbody>
       </table>
       <div id="empty" class="empty" style="display:none"></div>
+      <div id="pagination"></div>
     </div>
   </div>
 </div>
@@ -48,13 +49,12 @@ async function api(path, opts = {}) {
 
 function fmtDate(s) { if (!s) return '-'; return new Date(s).toLocaleString(); }
 
-async function loadUsers() {
-  const data = await api('/users');
+const pager = createPager('users', 'pagination', function(users, total) {
   const list = document.getElementById('userList');
   const empty = document.getElementById('empty');
-  if (!data.users.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  if (total === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-  list.innerHTML = data.users.map(u => `
+  list.innerHTML = users.map(u => `
     <tr>
       <td>${esc(u.email)}</td>
       <td style="font-size:13px;color:var(--secondary);font-weight:500">${esc((u.email || '').split('@')[1] || '-')}</td>
@@ -64,6 +64,11 @@ async function loadUsers() {
       <td><button class="btn btn-danger btn-sm" onclick="delUser('${esc(u.email)}')">${t('delete_btn')}</button></td>
     </tr>
   `).join('');
+}, 'auto');
+
+async function loadUsers() {
+  const data = await api('/users');
+  pager.setData(data.users || []);
 }
 
 async function delUser(email) {

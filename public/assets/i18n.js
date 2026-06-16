@@ -32,7 +32,7 @@ const LANG = {
     clients_create_title: 'Create New Client',
     clients_name_label: 'Client Name',
     clients_name_placeholder: 'e.g. ChatGPT SSO',
-    clients_uris_label: 'Redirect URIs (one per line)',
+    clients_uris_label: 'Redirect URI',
     clients_create_btn: 'Create Client',
     clients_success_title: 'Client Created Successfully',
     clients_success_desc: "Save the client secret now — it won't be shown again.",
@@ -42,7 +42,7 @@ const LANG = {
     clients_registered: 'Registered Clients',
     clients_th_name: 'Name',
     clients_th_id: 'Client ID',
-    clients_th_uris: 'Redirect URIs',
+    clients_th_uris: 'Redirect URI',
     clients_th_created: 'Created',
     clients_th_actions: 'Actions',
     clients_empty: 'No OIDC clients configured.',
@@ -175,7 +175,7 @@ const LANG = {
     clients_create_title: '建立新用戶端',
     clients_name_label: '用戶端名稱',
     clients_name_placeholder: '例如 ChatGPT SSO',
-    clients_uris_label: '回調網址（每行一個）',
+    clients_uris_label: '回調網址',
     clients_create_btn: '建立用戶端',
     clients_success_title: '用戶端建立成功',
     clients_success_desc: '請立即儲存 Client Secret，之後將無法再次查看。',
@@ -284,6 +284,144 @@ const LANG = {
     auth_btn: '繼續',
     delete_btn: '刪除',
   },
+  zh_cn: {
+    sidebar_title: 'CF OIDC',
+    nav_users: '用户管理',
+    nav_clients: '客户端管理',
+    nav_branding: '登录页设定',
+    nav_login_codes: '登录验证码',
+    nav_logs: '操作日志',
+    nav_logout: '登出',
+    nav_login_codes_disabled: '请先在「登录页设定」开启登录验证码。',
+    login_title: 'OIDC 管理后台',
+    login_subtitle: '请输入管理员密码',
+    login_password_label: '密码',
+    login_password_placeholder: '管理员密码',
+    login_btn: '登录',
+    login_error: '登录失败',
+    users_title: '已注册用户',
+    users_th_email: '邮箱',
+    users_th_domain: '域名',
+    users_th_sub: '用户 ID',
+    users_th_created: '创建时间',
+    users_th_last_login: '最后登录',
+    users_th_actions: '操作',
+    users_empty: '暂无已注册用户。',
+    users_confirm: '确定要删除用户',
+    users_deleted: '用户已删除',
+    clients_title: 'OIDC 客户端',
+    clients_create_title: '创建新客户端',
+    clients_name_label: '客户端名称',
+    clients_name_placeholder: '例如 ChatGPT SSO',
+    clients_uris_label: '回调网址',
+    clients_create_btn: '创建客户端',
+    clients_success_title: '客户端创建成功',
+    clients_success_desc: '请立即保存 Client Secret，之后将无法再次查看。',
+    clients_id_label: 'Client ID',
+    clients_secret_label: 'Client Secret',
+    clients_dismiss: '关闭',
+    clients_registered: '已注册的客户端',
+    clients_th_name: '名称',
+    clients_th_id: 'Client ID',
+    clients_th_uris: '回调网址',
+    clients_th_created: '创建时间',
+    clients_th_actions: '操作',
+    clients_empty: '暂无 OIDC 客户端。',
+    clients_name_required: '名称为必填',
+    clients_confirm: '确定要删除此客户端？',
+    clients_deleted: '客户端已删除',
+    clients_copied: '已复制！',
+    clients_th_domains: '允许域名',
+    clients_domains_label: '允许的邮箱域名（每行一个）',
+    clients_domains_placeholder: 'example.com',
+    clients_domains_empty: '未设定域名 — 所有邮箱均无法登录',
+    clients_domains_saved: '域名已更新',
+    login_codes_title: '登录验证码',
+    login_codes_create_title: '创建登录验证码',
+    login_codes_code_label: '验证码',
+    login_codes_code_placeholder: '留空会自动生成',
+    login_codes_auto_hint: '不输入验证码时，系统会自动生成一组随机码。',
+    login_codes_max_uses_label: '使用次数限制',
+    login_codes_max_uses_placeholder: '例如 5',
+    login_codes_unlimited: '无限次',
+    login_codes_create_btn: '添加验证码',
+    login_codes_security_title: '登录安全',
+    login_codes_global_note: '这些设定会应用到所有 OIDC 客户端。',
+    login_codes_login_code_toggle: '要求登录验证码',
+    login_codes_login_code_desc: '用户登录时必须输入后台创建的验证码。',
+    login_codes_turnstile_toggle: '要求 Turnstile',
+    login_codes_turnstile_desc: '已设定 Site Key 与 Secret 时，登录页会启用 Cloudflare Turnstile。',
+    login_codes_security_saved: '安全设定已保存',
+    login_codes_registered: '启用中的登录验证码',
+    login_codes_th_code: '验证码',
+    login_codes_th_usage: '使用次数',
+    login_codes_th_created: '创建时间',
+    login_codes_th_actions: '操作',
+    login_codes_empty: '尚未设定登录验证码。',
+    login_codes_added: '登录验证码已添加',
+    login_codes_deleted: '登录验证码已删除',
+    login_codes_confirm: '确定要删除此登录验证码？',
+    login_codes_bad_limit: '使用次数限制必须是正整数或无限次',
+    login_codes_copied: '验证码已复制',
+    login_codes_copy: '复制验证码',
+    login_codes_legacy_hidden: '旧版隐藏验证码',
+    login_codes_exhausted: '已用完',
+    branding_title: '登录页外观',
+    branding_org_title: '组织名称',
+    branding_icon_url: '组织 Icon 网址',
+    branding_icon_hint: '（显示在标题左侧）',
+    branding_bg_url: '背景图片网址',
+    branding_bg_hint: '（会覆盖主题默认背景）',
+    branding_bg_rotate: '随机轮换图片',
+    branding_bg_rotate_placeholder: '一行一个图片网址，每次随机显示',
+    branding_links_title: '外部跳转',
+    branding_links_hint: '会显示在登录页继续按钮下方，居中排列为圆形图标链接。',
+    branding_links_empty: '尚未设定外部跳转。',
+    branding_add_link: '添加链接',
+    branding_link_item: '链接',
+    branding_link_name: '链接名称',
+    branding_link_icon_url: 'ICON 网址',
+    branding_link_url: '跳转网址',
+    branding_save: '保存设定',
+    branding_login_code_toggle: '登录验证码',
+    branding_turnstile_toggle: 'turnstile',
+    branding_turnstile_unconfigured: '尚未设定 Turnstile ENV',
+    branding_theme: '主题',
+    branding_theme_hint: '— 点击选择',
+    branding_active: '使用中',
+    branding_saved: '设定已保存',
+    branding_settings: '设定',
+    branding_back_preview: '预览',
+    theme_gradient_start: '渐变起始色',
+    theme_gradient_end: '渐变结束色',
+    theme_btn_color: '主题色',
+    theme_auto: '自动',
+    theme_bg_color: '背景色',
+    theme_opacity: '透明度',
+    theme_blur: '模糊度',
+    theme_color1: '色彩 1',
+    theme_color2: '色彩 2',
+    theme_color3: '色彩 3',
+    theme_gradient: '渐变效果',
+    theme_border_width: '边框宽度',
+    theme_border_radius: '圆角',
+    logs_title: '操作日志',
+    logs_filter_placeholder: '按操作、邮箱或 IP 筛选...',
+    logs_refresh: '刷新',
+    logs_th_time: '时间',
+    logs_th_action: '操作',
+    logs_th_email: '邮箱',
+    logs_th_client: '客户端',
+    logs_th_ip: 'IP',
+    logs_empty: '暂无操作日志。',
+    auth_subtitle: '请输入您的电子邮箱以继续',
+    auth_email_label: '电子邮箱',
+    auth_email_placeholder: 'you@company.com',
+    auth_given_name: '名字',
+    auth_family_name: '姓氏',
+    auth_btn: '继续',
+    delete_btn: '删除',
+  },
 };
 
 function getLang() {
@@ -302,11 +440,19 @@ function t(key) {
 
 function renderLangSwitch() {
   const lang = getLang();
-  const btn = document.createElement('div');
-  btn.style.cssText = 'padding:12px 20px;margin-top:auto;border-top:1px solid rgba(255,255,255,0.15)';
-  btn.innerHTML = `<button onclick="setLang('${lang === 'en' ? 'zh' : 'en'}')" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 12px;color:rgba(255,255,255,0.7);cursor:pointer;font-size:13px;font-weight:500;width:100%;min-height:38px;transition:all .2s">${lang === 'en' ? '中文' : 'English'}</button>`;
+  const langs = [
+    { key: 'en', label: 'EN' },
+    { key: 'zh', label: '繁中' },
+    { key: 'zh_cn', label: '简中' },
+  ];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:12px 20px;margin-top:auto;border-top:1px solid rgba(255,255,255,0.15)';
+  wrap.innerHTML = '<div style="display:flex;gap:4px">' + langs.map(function(l) {
+    var a = lang === l.key;
+    return '<button onclick="setLang(\'' + l.key + '\')" style="flex:1;background:rgba(255,255,255,' + (a ? '0.22' : '0.08') + ');border:1px solid rgba(255,255,255,' + (a ? '0.35' : '0.15') + ');border-radius:6px;padding:7px 4px;color:rgba(255,255,255,' + (a ? '1' : '0.6') + ');cursor:pointer;font-size:12px;font-weight:' + (a ? '600' : '500') + ';transition:all .2s">' + l.label + '</button>';
+  }).join('') + '</div>';
   const sidebar = document.querySelector('.sidebar');
-  if (sidebar) sidebar.appendChild(btn);
+  if (sidebar) sidebar.appendChild(wrap);
 }
 
 function renderSidebar(active, opts) {
@@ -316,7 +462,7 @@ function renderSidebar(active, opts) {
   var lcClass = loginCodeEnabled ? '' : ' disabled';
   var lcClick = loginCodeEnabled ? '' : ' onclick="event.preventDefault();alert(t(\'nav_login_codes_disabled\'))"';
   sidebar.innerHTML = `
-    <h2><a href="https://github.com/banana2556/oidc-worker" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none">${t('sidebar_title')}</a></h2>
+    <h2><a href="https://github.com/banana2556/oidc-worker" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none"><img src="/favicon.png" alt="" width="22" height="22">${t('sidebar_title')}</a></h2>
     <a href="/admin/clients.html" ${active==='clients'?'class="active"':''}>${t('nav_clients')}</a>
     <a href="/admin/users.html" ${active==='users'?'class="active"':''}>${t('nav_users')}</a>
     <a href="/admin/branding.html" ${active==='branding'?'class="active"':''}>${t('nav_branding')}</a>
@@ -325,4 +471,71 @@ function renderSidebar(active, opts) {
     <a href="#" onclick="logout()" style="color:rgba(255,200,200,0.9)">${t('nav_logout')}</a>
   `;
   renderLangSwitch();
+}
+
+function createPager(name, containerId, renderFn, pageSize) {
+  var autoFit = pageSize === 'auto';
+  var pager = { page: 1, pageSize: autoFit ? 10 : (pageSize || 20), data: [] };
+  window._pagers = window._pagers || {};
+  window._pagers[name] = pager;
+
+  pager.calcFit = function() {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    var card = el.closest('.card');
+    if (!card) return;
+    var thead = card.querySelector('thead');
+    if (!thead) return;
+    var vh = window.innerHeight;
+    var top = thead.getBoundingClientRect().bottom;
+    var available = vh - top - 70;
+    var rowH = 45;
+    var row = card.querySelector('tbody tr');
+    if (row) rowH = Math.max(row.offsetHeight, 30);
+    pager.pageSize = Math.max(3, Math.floor(available / rowH));
+  };
+
+  pager.setData = function(data) {
+    pager.data = data || [];
+    pager.page = 1;
+    if (autoFit) pager.calcFit();
+    pager.refresh();
+  };
+
+  pager.refresh = function() {
+    var total = pager.data.length;
+    var totalPages = Math.max(1, Math.ceil(total / pager.pageSize));
+    if (pager.page > totalPages) pager.page = totalPages;
+    if (pager.page < 1) pager.page = 1;
+    var start = (pager.page - 1) * pager.pageSize;
+    renderFn(total === 0 ? [] : pager.data.slice(start, start + pager.pageSize), total);
+
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    if (total <= pager.pageSize) { el.innerHTML = ''; return; }
+    var s = start + 1;
+    var e = Math.min(start + pager.pageSize, total);
+    el.innerHTML = '<div class="pager">' +
+      '<span class="pager-info">' + s + ' – ' + e + ' / ' + total + '</span>' +
+      '<div class="pager-btns">' +
+        '<button class="pager-btn"' + (pager.page <= 1 ? ' disabled' : '') +
+        ' onclick="window._pagers[\'' + name + '\'].page--;window._pagers[\'' + name + '\'].refresh()">‹</button>' +
+        '<span class="pager-current">' + pager.page + ' / ' + totalPages + '</span>' +
+        '<button class="pager-btn"' + (pager.page >= totalPages ? ' disabled' : '') +
+        ' onclick="window._pagers[\'' + name + '\'].page++;window._pagers[\'' + name + '\'].refresh()">›</button>' +
+      '</div></div>';
+  };
+
+  if (autoFit) {
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function() {
+        pager.calcFit();
+        pager.refresh();
+      }, 150);
+    });
+  }
+
+  return pager;
 }

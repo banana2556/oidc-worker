@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OIDC Admin - Login Codes</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/assets/admin.css">
 <style>
 .hint{color:var(--text-muted);font-size:12px;line-height:1.5;margin-top:6px}
@@ -47,6 +47,7 @@
         </table>
       </div>
       <div id="empty" class="empty" style="display:none"></div>
+      <div id="pagination"></div>
     </div>
   </div>
 </div>
@@ -123,12 +124,10 @@ function fmtUsage(code) {
   return `${code.used} / ${code.max_uses}`;
 }
 
-async function loadCodes() {
-  const data = await api('/login-codes');
-  const codes = data.login_codes || [];
+const pager = createPager('codes', 'pagination', function(codes, total) {
   const list = document.getElementById('codeList');
   const empty = document.getElementById('empty');
-  if (!codes.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  if (total === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
   list.innerHTML = codes.map(code => {
     const fullCode = code.code || '';
@@ -146,6 +145,11 @@ async function loadCodes() {
       </tr>
     `;
   }).join('');
+}, 'auto');
+
+async function loadCodes() {
+  const data = await api('/login-codes');
+  pager.setData(data.login_codes || []);
 }
 
 async function addCode() {

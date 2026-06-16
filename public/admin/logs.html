@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OIDC Admin - Logs</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/assets/admin.css">
 </head>
 <body>
@@ -21,6 +21,7 @@
         <tbody id="logList"></tbody>
       </table>
       <div id="empty" class="empty" style="display:none"></div>
+      <div id="pagination"></div>
     </div>
   </div>
 </div>
@@ -55,10 +56,10 @@ async function api(path, opts = {}) {
 const actionColors = { authorize: 'var(--success)', token: 'var(--primary)', admin_login: '#f59e0b' };
 function fmtDate(s) { if (!s) return '-'; return new Date(s).toLocaleString(); }
 
-function renderLogs(logs) {
+const pager = createPager('logs', 'pagination', function(logs, total) {
   const list = document.getElementById('logList');
   const empty = document.getElementById('empty');
-  if (!logs.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  if (total === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
   list.innerHTML = logs.map(l => `
     <tr>
@@ -69,18 +70,18 @@ function renderLogs(logs) {
       <td style="font-size:12px;font-family:monospace;color:var(--text-muted)">${esc(l.ip||'-')}</td>
     </tr>
   `).join('');
-}
+}, 'auto');
 
 async function loadLogs() {
   const data = await api('/logs');
   allLogs = data.logs || [];
-  renderLogs(allLogs);
+  pager.setData(allLogs);
 }
 
 function filterLogs() {
   const q = document.getElementById('filterInput').value.toLowerCase();
-  if (!q) { renderLogs(allLogs); return; }
-  renderLogs(allLogs.filter(l => (l.action||'').toLowerCase().includes(q) || (l.email||'').toLowerCase().includes(q) || (l.ip||'').toLowerCase().includes(q)));
+  if (!q) { pager.setData(allLogs); return; }
+  pager.setData(allLogs.filter(l => (l.action||'').toLowerCase().includes(q) || (l.email||'').toLowerCase().includes(q) || (l.ip||'').toLowerCase().includes(q)));
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }

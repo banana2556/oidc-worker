@@ -286,14 +286,21 @@ function renderLoginPage(
       email: 'Email Address',
       code: 'Verification Code',
       btn: 'Continue',
-      toggle: '中文',
+      toggle: '繁中',
     },
     zh: {
       subtitle: loginCodeEnabled ? '請輸入電子信箱與驗證碼以繼續' : '請輸入電子信箱以繼續',
       email: '電子信箱',
       code: '驗證碼',
       btn: '繼續',
-      toggle: 'English',
+      toggle: '简中',
+    },
+    zh_cn: {
+      subtitle: loginCodeEnabled ? '请输入电子邮箱与验证码以继续' : '请输入电子邮箱以继续',
+      email: '电子邮箱',
+      code: '验证码',
+      btn: '继续',
+      toggle: 'EN',
     },
   };
   const emailValueAttr = emailHint ? ` value="${escapeHtml(emailHint)}"` : '';
@@ -327,7 +334,7 @@ ${link.icon_url ? `<img class="external-link-icon" src="${escapeHtml(link.icon_u
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
 <title>${escapeHtml(branding.title)}</title>
 ${turnstileScript}
 <style>
@@ -387,7 +394,7 @@ var themeColorAuto=${themeColorAuto ? 'true' : 'false'};
 var i18n=${JSON.stringify(i18n)};
 function getLang(){return localStorage.getItem('login_lang')||'en'}
 function setLang(l){localStorage.setItem('login_lang',l);applyLang()}
-function toggleLang(){setLang(getLang()==='en'?'zh':'en')}
+function toggleLang(){var c=getLang();setLang(c==='en'?'zh':c==='zh'?'zh_cn':'en')}
 function applyLang(){
   var l=i18n[getLang()]||i18n.en;
   document.getElementById('subtitle').textContent=l.subtitle;
