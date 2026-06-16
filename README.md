@@ -1,55 +1,53 @@
 # oidc-worker
 
-Cloudflare Workers 上的輕量 OIDC Identity Provider，內建 Admin UI、Allowed Domains、OIDC Clients、登入驗證碼、Turnstile、Login page branding 與活動記錄。
+跑在 Cloudflare Workers 上的 OIDC Identity Provider。
 
-## 功能特色
+不需要伺服器、不需要資料庫，一個 Worker + KV 就是一套完整的 SSO。
 
-- **OIDC Authorization Code Flow + PKCE (S256)** — 標準 OIDC 流程，支援 ChatGPT 等第三方整合
-- **JWT Access Token (HS256)** — 無需額外 KV 查詢即可驗證
-- **多語系 (i18n)** — 英文、繁體中文、簡體中文，Admin UI 與登入頁皆支援
-- **用戶端管理** — 每個 Client 獨立設定 Redirect URI 與允許的信箱域名
-- **登入頁主題** — Glass / Modern / Minimal 三種主題，支援背景圖片輪換與自訂品牌
-- **登入驗證碼** — 可設定使用次數限制的一次性驗證碼
-- **Cloudflare Turnstile** — 選配的人機驗證
-- **操作日誌** — 記錄所有授權與管理操作
-- **自動分頁** — 表格依視窗高度自動分頁，不產生頁面滾動
-- **一鍵部署** — 支援 Cloudflare Deploy Button
+## 為什麼用這個
 
-## 一鍵部署到 Cloudflare
+| | oidc-worker | Auth0 / Okta | Keycloak / Dex |
+|---|---|---|---|
+| 基礎設施 | 零 — 跑在 Cloudflare Edge | SaaS，受限於供應商 | 需要自行維運主機與資料庫 |
+| 成本 | Workers Free Tier 即可運行 | 免費額度有限，之後按用量收費 | 免費但吃主機資源 |
+| 部署 | 一鍵 Deploy 或 `wrangler deploy` | 註冊 + 設定 tenant | Docker / VM + DB + 反向代理 |
+| 延遲 | Edge 就近回應 | 取決於 region | 取決於主機位置 |
+| 登入頁自訂 | 內建三種主題，支援品牌 Logo、背景圖輪換、外部連結 | 需付費方案或自建 Universal Login | 需手動改 theme template |
+| 存取控制 | 每個 Client 獨立設定允許的信箱域名 | 需設定 Rules / Actions | 需設定 Realm roles |
+| 管理介面 | 內建，隨 Worker 一起部署 | 獨立的 Dashboard | 獨立的 Admin Console |
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/grape2556/oidc-worker)
+## 功能
 
-這個按鈕會把此 Worker 部署到你的 Cloudflare 帳號，並依照 `wrangler.toml` 自動建立與綁定 Worker 需要的 Cloudflare 資源，例如 `OIDC_KV` KV namespace 與 static assets。
+- **標準 OIDC Authorization Code Flow + PKCE (S256)** — 相容 ChatGPT、Grafana、Outline 等任何支援 OIDC 的服務
+- **JWT Access Token** — HS256 簽發，不需要額外 KV 查詢即可驗證
+- **Per-Client 域名白名單** — 每個用戶端獨立控制哪些信箱域名可以登入
+- **登入驗證碼** — 可設使用次數上限的一次性碼，適合人工審核場景
+- **Cloudflare Turnstile** — 原生整合，選配啟用
+- **登入頁品牌化** — Glass / Modern / Minimal 三種主題，支援自訂 Logo、背景圖、外部跳轉連結
+- **多語系** — 英文 / 繁體中文 / 簡體中文，管理後台與登入頁皆支援切換
+- **操作日誌** — 所有授權與管理操作皆有紀錄
 
-> Cloudflare Deploy button 適用於 public GitHub/GitLab repository。如果你使用 private fork，請改用下方 CLI 部署流程。
+## 一鍵部署
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/banana2556/oidc-worker)
+
+> 適用於 public repository。Private fork 請改用下方 CLI 流程。
 
 ### 部署後必填設定
 
-部署完成後，到 Cloudflare Dashboard 的 Worker 設定頁加入下列 Variables / Secrets。
+到 Cloudflare Dashboard → Worker → Settings → Variables & Secrets：
 
 | 名稱 | 類型 | 必填 | 說明 |
-| --- | --- | --- | --- |
-| `ISSUER_URL` | Variable | Yes | 你的 IdP 公開網址，例如 `https://sso.example.com`。這個值必須和 OIDC discovery / token 裡的 issuer 一致。 |
-| `ADMIN_PASSWORD` | Secret | Yes | Admin UI 登入密碼。 |
-| `ADMIN_SECRET` | Secret | Yes | Admin JWT 簽章密鑰，建議使用隨機長字串。 |
-| `TURNSTILE_SITE_KEY` | Variable | No | Cloudflare Turnstile site key。未設定時 Turnstile 開關會自動停用。 |
-| `TURNSTILE_SECRET_KEY` | Secret | No | Cloudflare Turnstile secret key。 |
+|---|---|---|---|
+| `ISSUER_URL` | Variable | Yes | IdP 公開網址，例如 `https://sso.example.com` |
+| `ADMIN_PASSWORD` | Secret | Yes | Admin UI 登入密碼 |
+| `ADMIN_SECRET` | Secret | Yes | JWT 簽章密鑰（建議 `openssl rand -base64 32`） |
+| `TURNSTILE_SITE_KEY` | Variable | No | Turnstile site key，未設定則自動停用 |
+| `TURNSTILE_SECRET_KEY` | Secret | No | Turnstile secret key |
 
-建議用這個方式產生 `ADMIN_SECRET`：
+設定完成後開啟 `https://你的網域/admin/` 即可進入管理後台。
 
-```bash
-openssl rand -base64 32
-```
-
-完成後開啟：
-
-```text
-https://你的網域/admin/index.html
-```
-
-## CLI 完整部署流程
-
-如果不使用一鍵部署按鈕，可以用 Wrangler 手動部署。
+## CLI 部署
 
 ```bash
 npm ci
@@ -57,7 +55,7 @@ npx wrangler login
 npx wrangler kv namespace create OIDC_KV
 ```
 
-把 Cloudflare 回傳的 KV namespace `id` 更新到 `wrangler.toml`：
+將回傳的 KV namespace id 填入 `wrangler.toml`：
 
 ```toml
 [[kv_namespaces]]
@@ -65,45 +63,27 @@ binding = "OIDC_KV"
 id = "你的 KV namespace id"
 ```
 
-設定必要 secrets：
+設定 secrets：
 
 ```bash
 npx wrangler secret put ADMIN_PASSWORD
 npx wrangler secret put ADMIN_SECRET
+# 選配：npx wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
-如果要啟用 Turnstile：
-
-```bash
-npx wrangler secret put TURNSTILE_SECRET_KEY
-```
-
-並在 `wrangler.toml` 或 Cloudflare Dashboard 設定：
-
-```toml
-[vars]
-ISSUER_URL = "https://你的網域"
-TURNSTILE_SITE_KEY = "你的 Turnstile site key"
-```
-
-最後部署：
+部署：
 
 ```bash
 npm run deploy
 ```
 
-## 主要端點
+## 端點
 
 | 路徑 | 用途 |
-| --- | --- |
-| `/.well-known/openid-configuration` | OIDC discovery document |
-| `/jwks.json` | JWKS public keys |
-| `/authorize` | OIDC authorization endpoint |
-| `/token` | OIDC token endpoint |
-| `/userinfo` | OIDC userinfo endpoint |
-| `/admin/index.html` | Admin UI |
-
-## 參考
-
-- [Cloudflare Deploy to Cloudflare buttons](https://developers.cloudflare.com/workers/platform/deploy-buttons/)
-- [Cloudflare Workers CLI deploy guide](https://developers.cloudflare.com/workers/get-started/guide/)
+|---|---|
+| `/.well-known/openid-configuration` | OIDC Discovery |
+| `/jwks.json` | JWKS Public Keys |
+| `/authorize` | Authorization Endpoint |
+| `/token` | Token Endpoint |
+| `/userinfo` | UserInfo Endpoint |
+| `/admin/` | Admin UI |
