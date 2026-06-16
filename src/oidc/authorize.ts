@@ -61,6 +61,7 @@ export async function handleAuthorizeGet(request: Request, env: Env): Promise<Re
     loginHint,
     security.login_code_enabled,
     security.turnstile_enabled ? env.TURNSTILE_SITE_KEY : undefined,
+    env.LOGO_URL,
   );
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
@@ -90,7 +91,7 @@ export async function handleAuthorizePost(request: Request, env: Env): Promise<R
   const turnstileSiteKey = security.turnstile_enabled ? env.TURNSTILE_SITE_KEY : undefined;
 
   if (!await verifyTurnstile(request, env, turnstileToken, security.turnstile_enabled)) {
-    const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, 'Human verification failed.', email, security.login_code_enabled, turnstileSiteKey);
+    const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, 'Human verification failed.', email, security.login_code_enabled, turnstileSiteKey, env.LOGO_URL);
     return new Response(html, { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
@@ -100,12 +101,12 @@ export async function handleAuthorizePost(request: Request, env: Env): Promise<R
   const domains: string[] = client?.allowed_domains || [];
 
   if (!domains.includes(domain)) {
-    const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, `Domain "${domain}" is not allowed.`, email, security.login_code_enabled, turnstileSiteKey);
+    const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, `Domain "${domain}" is not allowed.`, email, security.login_code_enabled, turnstileSiteKey, env.LOGO_URL);
     return new Response(html, { status: 403, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
   if (security.login_code_enabled && !await consumeLoginCode(env, loginCode)) {
-    const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, 'Invalid email or verification code.', email, true, turnstileSiteKey);
+    const html = renderLoginPage(branding, clientId, redirectUri, scope, state, nonce, codeChallenge, codeChallengeMethod, 'Invalid email or verification code.', email, true, turnstileSiteKey, env.LOGO_URL);
     return new Response(html, { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 
@@ -204,7 +205,8 @@ function renderLoginPage(
   error?: string,
   emailHint?: string,
   loginCodeEnabled = true,
-  turnstileSiteKey?: string
+  turnstileSiteKey?: string,
+  logoUrl?: string,
 ): string {
   const ts = branding.theme_settings || {};
   const ms = ts.modern || {} as Record<string, string | number | boolean>;
@@ -334,7 +336,7 @@ ${link.icon_url ? `<img class="external-link-icon" src="${escapeHtml(link.icon_u
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="icon" href="${logoUrl || '/favicon.png'}" type="image/png">
 <title>${escapeHtml(branding.title)}</title>
 ${turnstileScript}
 <style>

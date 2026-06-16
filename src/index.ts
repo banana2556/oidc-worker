@@ -53,6 +53,11 @@ export default {
             );
       } else if (path.startsWith('/api/admin/')) {
         response = await handleAdminApi(request, env, path);
+      } else if (path === '/site-config.js') {
+        const cfg = { logo_url: env.LOGO_URL || '', site_name: env.SITE_NAME || '' };
+        response = new Response(`window.__SITE_CONFIG=${JSON.stringify(cfg)};`, {
+          headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' },
+        });
       } else {
         return env.ASSETS.fetch(request);
       }

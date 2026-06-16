@@ -450,19 +450,27 @@ function renderLangSwitch() {
   wrap.innerHTML = '<div style="display:flex;gap:4px">' + langs.map(function(l) {
     var a = lang === l.key;
     return '<button onclick="setLang(\'' + l.key + '\')" style="flex:1;background:rgba(255,255,255,' + (a ? '0.22' : '0.08') + ');border:1px solid rgba(255,255,255,' + (a ? '0.35' : '0.15') + ');border-radius:6px;padding:7px 4px;color:rgba(255,255,255,' + (a ? '1' : '0.6') + ');cursor:pointer;font-size:12px;font-weight:' + (a ? '600' : '500') + ';transition:all .2s">' + l.label + '</button>';
-  }).join('') + '</div>';
+  }).join('') + '</div>' +
+    '<a href="https://github.com/banana2556" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:5px;margin-top:10px;color:rgba(255,255,255,0.35);font-size:11px;text-decoration:none;transition:color .2s" onmouseover="this.style.color=\'rgba(255,255,255,0.7)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.35)\'"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>@banana2556</a>';
   const sidebar = document.querySelector('.sidebar');
   if (sidebar) sidebar.appendChild(wrap);
 }
 
 function renderSidebar(active, opts) {
+  var sc = window.__SITE_CONFIG || {};
+  var logoUrl = sc.logo_url || '/favicon.png';
+  var siteName = sc.site_name || t('sidebar_title');
+  if (sc.logo_url) {
+    var link = document.querySelector('link[rel="icon"]');
+    if (link) link.href = sc.logo_url;
+  }
   var loginCodeEnabled = opts && opts.loginCodeEnabled !== undefined ? opts.loginCodeEnabled : true;
   var sidebar = document.querySelector('.sidebar');
   if (!sidebar) return;
   var lcClass = loginCodeEnabled ? '' : ' disabled';
   var lcClick = loginCodeEnabled ? '' : ' onclick="event.preventDefault();alert(t(\'nav_login_codes_disabled\'))"';
   sidebar.innerHTML = `
-    <h2><a href="https://github.com/banana2556/oidc-worker" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none"><img src="/favicon.png" alt="" width="22" height="22">${t('sidebar_title')}</a></h2>
+    <h2><a href="https://github.com/banana2556/oidc-worker" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none"><img src="${logoUrl}" alt="" width="22" height="22">${siteName}</a></h2>
     <a href="/admin/clients.html" ${active==='clients'?'class="active"':''}>${t('nav_clients')}</a>
     <a href="/admin/users.html" ${active==='users'?'class="active"':''}>${t('nav_users')}</a>
     <a href="/admin/branding.html" ${active==='branding'?'class="active"':''}>${t('nav_branding')}</a>

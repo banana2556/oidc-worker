@@ -44,6 +44,8 @@
 | `ADMIN_SECRET` | Secret | Yes | JWT 簽章密鑰（建議 `openssl rand -base64 32`） |
 | `TURNSTILE_SITE_KEY` | Variable | No | Turnstile site key，未設定則自動停用 |
 | `TURNSTILE_SECRET_KEY` | Secret | No | Turnstile secret key |
+| `LOGO_URL` | Variable | No | 自訂 Logo 網址，會替換 Sidebar Logo 與 Favicon（自動縮放） |
+| `SITE_NAME` | Variable | No | 自訂網站名稱，取代預設的「CF OIDC」 |
 
 設定完成後開啟 `https://你的網域/admin/` 即可進入管理後台。
 
